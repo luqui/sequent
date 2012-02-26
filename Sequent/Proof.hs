@@ -1,3 +1,5 @@
+{-# LANGUAGE RankNTypes #-}
+
 module Sequent.Proof where
 
 import Control.Monad (guard)
@@ -31,18 +33,24 @@ data Proof h
     -- drop a hypothesis
     | DropHyp Hyp (Proof h)
 
-holeConts :: Proof h -> [(h, Proof h -> Proof h)]
+newtype HoleCont = HoleCont {
+    cont :: forall h. Proof h -> Proof h
+}
+
+mCont :: (forall h. Proof h -> Proof h) -> HoleCont -> HoleCont
+mCont f (HoleCont c) = HoleCont (f . c)
+
+holeConts :: Proof h -> [(h, HoleCont)]
 holeConts Done = []
-holeConts (Suspend h) = [(h, id)]
-holeConts (Exact g h p) = (fmap.fmap) (Exact g h .) (holeConts p)
-holeConts (Instance e hs l p) = (fmap.fmap) (Instance e hs l .) (holeConts p)
-holeConts (ModusGoal hs l l' p) = (fmap.fmap) (ModusGoal hs l l' .) (holeConts p)
-holeConts (FlattenHyp h ls p) = (fmap.fmap) (FlattenHyp h ls .) (holeConts p)
-holeConts (DropHyp h p) = (fmap.fmap) (DropHyp h .) (holeConts p)
+holeConts (Suspend h) = [(h, HoleCont id)]
+holeConts (Exact g h p) = (fmap.fmap) (mCont (Exact g h)) (holeConts p)
+holeConts (Instance e hs l p) = (fmap.fmap) (mCont (Instance e hs l)) (holeConts p)
+holeConts (ModusGoal hs l l' p) = (fmap.fmap) (mCont (ModusGoal hs l l')) (holeConts p)
+holeConts (FlattenHyp h ls p) = (fmap.fmap) (mCont (FlattenHyp h ls)) (holeConts p)
+holeConts (DropHyp h p) = (fmap.fmap) (mCont (DropHyp h)) (holeConts p)
 
 proofCheck :: Clause -> Proof () -> Proof Clause
 proofCheck (ImplClause _ []) Done = Done
-proofCheck c (Suspend ()) = Suspend c
 proofCheck c@(ImplClause hyp con) (Exact (Goal gl) (Hyp hl) ps) = try c $ do
     (precon',g,postcon') <- dismember con gl
     let con' = reverse precon' ++ postcon'
@@ -74,6 +82,7 @@ proofCheck c@(ImplClause hyp con) (FlattenHyp (Hyp h) labels ps) = try c $ do
 proofCheck c@(ImplClause hyp con) (DropHyp (Hyp h) ps) = try c $ do
     (preh, h, posth) <- dismember hyp h
     return $ proofCheck (ImplClause (preh ++ posth) con) ps
+proofCheck c _ = Suspend c
 
 subst :: Name -> Expr -> ClauseAtom -> ClauseAtom
 subst n e = go
