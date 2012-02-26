@@ -1,0 +1,2 @@
+sequent - A programming language based on sequent calculus and the Coq
+proof mode.
