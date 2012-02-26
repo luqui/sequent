@@ -136,6 +136,42 @@ the user of the function and the occurrence of the existential.  Usage of the
 function, similarly, instantiates any unshared hypotheses.  Including hypotheses
 in the environment reduces the parameters of the Skolem function.
 
+Equivalences
+------------
+
+We would like to define shorthands to make the statements of our signatures more
+manageable.  However, definitions are not modular: they assume a one way
+relationship between the symbol defined what it is defined in terms of, thus
+singling out an idea which is "more primitive".  We would like to adopt the
+*principle of shifting foundation*, which allows multiple foundations for the
+same code.
+
+So, we do not have definitions but equivalences, saying that two phrasings are
+actually the same concept.
+
+    a b :nat (
+        [a divides b]
+        ===
+        c :nat [c*a = b]
+    )
+
+This is essentially stating the two theorems:
+
+    a b :nat [a divides b] -> c :nat [c*a = b]
+    a b c :nat [c*a = b] -> [a divides b]
+
+Note how the quantification on `c` switched from existential to universal. They
+are isomorphic, and that isomorphism is employed while signatures are being
+reduced to normal form.
+
+These two theorems will probably be proved by definition (considering nothing
+more is known about the symbol `divides`, so there is nothing to prove it with);
+however note that the former requires a witness, and this must be constructed.
+We also differ from dependently-typed systems here, because `]a divides b]` does
+*not* contain a witness in its proof, so we must be able to construct this
+witness given only `a` and `b`. If we cannot, we do not consider the statements
+intuitionistically equivalent.
+
 Environment
 -----------
 
