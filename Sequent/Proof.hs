@@ -31,6 +31,15 @@ data Proof h
     -- drop a hypothesis
     | DropHyp Hyp (Proof h)
 
+holeConts :: Proof h -> [(h, Proof h -> Proof h)]
+holeConts Done = []
+holeConts (Suspend h) = [(h, id)]
+holeConts (Exact g h p) = (fmap.fmap) (Exact g h .) (holeConts p)
+holeConts (Instance e hs l p) = (fmap.fmap) (Instance e hs l .) (holeConts p)
+holeConts (ModusGoal hs l l' p) = (fmap.fmap) (ModusGoal hs l l' .) (holeConts p)
+holeConts (FlattenHyp h ls p) = (fmap.fmap) (FlattenHyp h ls .) (holeConts p)
+holeConts (DropHyp h p) = (fmap.fmap) (DropHyp h .) (holeConts p)
+
 proofCheck :: Clause -> Proof () -> Proof Clause
 proofCheck (ImplClause _ []) Done = Done
 proofCheck c (Suspend ()) = Suspend c
