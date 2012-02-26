@@ -1,0 +1,13 @@
+This is a programming language designed around the principle that you construct
+programs as in Coq's proof mode.
+
+You manipulate both knowledge and variables.  But knowledge manipultion is soft;
+you can claim things without proof, assuming you document them.
+
+The code itself is not made to be especially readable.  In fact, the code itself
+should almost be absent, like the strokes of an artist, leaving only the
+result to represent what the code did.
+
+Signatures play the role of functions in this language. A signature specifies
+inputs and outputs, including names and knowledge.
+
