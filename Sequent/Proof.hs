@@ -2,6 +2,7 @@ module Sequent.Proof where
 
 import Control.Monad (guard)
 import Data.Maybe (isNothing)
+import Control.Arrow (second)
 import Sequent.Syntax
 
 data Hyp = Hyp Label
@@ -44,10 +45,9 @@ proofCheck c@(ImplClause hyp con) (Instance ax (Hyp b,Hyp b') zlabel ps) = try c
     AClause (ImplClause bhyp bcon) <- lookup b hyp
     (preb', bx, postb') <- dismember bhyp b'
     AVar n <- return bx
-    let (hyp',s') = listSubster (subst n ax) postb'
-    let (con',_) = listSubster s' bcon
-    let hyp'' = preb' ++ hyp'
-    return $ proofCheck (ImplClause (bhyp ++ [(zlabel, AClause (ImplClause hyp'' con'))]) bcon) ps
+    let hyp' = map (second (subst n ax)) (preb' ++ postb')
+    let con' = map (second (subst n ax)) bcon
+    return $ proofCheck (ImplClause (bhyp ++ [(zlabel, AClause (ImplClause hyp' con'))]) bcon) ps
 proofCheck c@(ImplClause hyp con) (ModusGoal (Hyp b, Hyp b') hlabel glabel ps) = try c $ do
     guard $ isNothing (lookup hlabel hyp)
     guard $ isNothing (lookup glabel con)
@@ -66,36 +66,19 @@ proofCheck c@(ImplClause hyp con) (DropHyp (Hyp h) ps) = try c $ do
     (preh, h, posth) <- dismember hyp h
     return $ proofCheck (ImplClause (preh ++ posth) con) ps
 
-newtype Subster a = Subster {
-    unSubster :: a -> (a, Subster a)
-}
-
-idSubster :: Subster a
-idSubster = Subster $ \a -> (a, idSubster)
-
-listSubster :: Subster a -> [a] -> ([a], Subster a)
-listSubster s [] = ([], s)
-listSubster (Subster f) (c:cs) = 
-    let (c',s') = f c 
-        (cs',s'') = listSubster s' cs in
-    (c':cs', s'')
-
-subst :: Name -> Expr -> Subster (Label,ClauseAtom)
-subst n e = Subster go
+subst :: Name -> Expr -> ClauseAtom -> ClauseAtom
+subst n e = go
     where
-    go (l,AVar n') -- TODO free var capture
-        | n' == n = ((l,AVar n'), idSubster)
-        | otherwise = ((l,AVar n'), subst n e)
-    go (l,AType v t)
-        = ((l,AType (substExpr n e v) (substExpr n e t)), subst n e)
-    go (l,ARel n' es)
+    go (AVar n') -- TODO free var capture
+        | n' == n = AVar n'
+        | otherwise = AVar n'
+    go (AType v t)
+        = AType (substExpr n e v) (substExpr n e t)
+    go (ARel n' es)
         -- substitute n'?  Higher order...
-        = ((l,ARel n' (map (substExpr n e) es)), subst n e)
-    go (l,AClause (ImplClause hyp con)) =
-        let (hyp', s') = listSubster (subst n e) hyp
-            (con', _) = listSubster s' con
-        in 
-            ((l, AClause (ImplClause hyp' con')), subst n e)
+        = ARel n' (map (substExpr n e) es)
+    go (AClause (ImplClause hyp con)) =
+        AClause (ImplClause (map (second (subst n e)) hyp) (map (second (subst n e)) con))
 
 substExpr :: Name -> Expr -> Expr -> Expr
 substExpr n e (VarExpr n')
