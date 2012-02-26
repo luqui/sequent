@@ -50,15 +50,7 @@ introduces obligations for `x:nat` and `y:nat`, and produces the knowledge
 
 Similarly, the division algorithm can be referred to as `q(x,y)` and `r(x,y)`,
 if left defined as above.  When one is applied, the suitably skolemized other
-is introduced into the context with it.  However, with these uninstructive
-names, we want to give it some context, so we can label the theorem:
-
-    division:
-    x y :nat -> q r :nat [x = q*y + r] [r < y]
-
-Now `q` and `r` may not be referred to as skolem functions.  They may still be
-introduced by existential destruction.  There ought to be another notation for
-introduing them in a theorem body, but I can't think of one right now.
+is introduced into the context with it.
 
 Signature Syntax
 ----------------
@@ -119,4 +111,28 @@ on the position of the variable clause.
 Skolem Functions
 ----------------
 
-Every existential quantifier introduces a Skolem function 
+Every existential quantifier introduces a Skolem function into every appropriate
+scope. An appropriate scope is one in which the existential appears in a strictly
+positive position (i.e. only to the right of arrows).  So:
+
+    x y :nat -> gcd :nat
+
+Introduces a `gcd` Skolem function in the entire scope of the theorem.  Consider
+this generalized version:
+
+    (x y :nat -> q r [x = q*y + r]) 
+    x y :nat
+    ->
+    gcd :nat
+
+Like the last example, `gcd` appears in a strictly positive position for the
+scope of the theorem.  However, `q` and `r` appear in a strictly positive
+position for the scope of the *proof* (in which `x y :nat -> q r [...]` is used
+as an assumption), so the proof may use the `q(x,y)` and `r(x,y)` Skolem
+functions.
+
+The parameters of the skolem function depend on the unshared assumptions between
+the user of the function and the occurrence of the existential.  Usage of the
+function, similarly, instantiates any unshared hypotheses.
+
+
