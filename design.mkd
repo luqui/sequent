@@ -133,6 +133,56 @@ functions.
 
 The parameters of the skolem function depend on the unshared assumptions between
 the user of the function and the occurrence of the existential.  Usage of the
-function, similarly, instantiates any unshared hypotheses.
+function, similarly, instantiates any unshared hypotheses.  Including hypotheses
+in the environment reduces the parameters of the Skolem function.
 
+Environment
+-----------
 
+Now, there is the pressing question: what do proofs look like? The answer, as I
+hinted in the introduction, is nothing.  Proofs are created in an interactive
+environment and are immutable and (in principle) unviewable forever.
+
+The environment provides:
+
+* A way to state signatures/theorems that need impliementation/proof.
+* A "tactic language" (though not necessarily text-based) to produce
+    implementations/proofs.
+* A way to introduce and discharge hypotheses and goals.
+* A search engine for previously defined signatures
+
+The environment has the ability to edit anything about the context.  If you are
+editing a proof, you may introduce a hypotheses into the scope of the theorem
+(hence modifying its statement), or into an outer, more global scope (if you
+forgot something about the structures you are using).  You may use the tactic
+language even when you are not editing a proof, and this modifies the shared
+context (eg. it can introduce hypotheses for all further proofs in this
+context).
+
+You may discharge goals by either proving them (matching them up with a
+hypothesis) or by *documenting* them: admitting them and providing an english
+explanation about why this is true.  This documentation goes into the detail
+view of theorems, so we can see what non-formal assumptions have been made.
+
+The search engine is whatever I can make of it; it's a complex goal.  But it
+ought to be as powerful as possible: you can give it matching criteria for
+theorems, e.g. you could query a la Hoogle:
+
+    x y : nat -> z : nat
+
+This will search for theorems that require at least two `nat`s as hypotheses and
+give at least a `nat` as a result.  This is not checking for subtypes, but
+rather for a sense of matching: often we know what kind of information we will
+need to compute something, but we may not realize how much. It is not common
+that we don't realize that we *don't* need some information (though a looser
+search mode could be provided).  This is long-term stuff so I will leave it for
+now.
+
+Object Language
+---------------
+
+Sequent is defined *abstractly* in terms of an object language.  For example, a
+sequent session may generate a javascript function from each skolem function.
+The object language only needs to support basic lambda calculus facilities, the
+system will do the stitching given the object language's syntax for lambda and
+apply (and various other things, surely).
