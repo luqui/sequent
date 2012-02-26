@@ -1,20 +1,24 @@
 module Sequent.Syntax where
 
 type Name = String
+type Label = Integer
 
-data VarClause = VarClause [Name] [Type] [Prop]
+data ClauseAtom
+    = AVar Name
+    | AType Expr Expr
+    -- spaces in name represent argument positions
+    -- eg. " divides ".
+    | ARel Name [Expr]
+    | AClause Clause
+    deriving Eq
+
+type Side = [(Label, ClauseAtom)]
 
 data Clause
-    --           context  hypotheses  conclusions
-    = ImplClause [Clause] [VarClause] [VarClause] 
-
-data Type
-    = Type [Expr]
-
-data Prop
-    = Prop [Expr]
+    = ImplClause Side Side
+    deriving Eq
 
 data Expr
     = VarExpr Name
     | ApplyExpr [Expr]
-    | PropExpr [Expr]
+    deriving Eq
