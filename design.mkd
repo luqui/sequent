@@ -1,3 +1,6 @@
+Introduction
+------------
+
 This is a programming language designed around the principle that you construct
 programs as in Coq's proof mode.
 
@@ -53,8 +56,67 @@ names, we want to give it some context, so we can label the theorem:
     division:
     x y :nat -> q r :nat [x = q*y + r] [r < y]
 
-Now `q` and `r` may not be referred to as skolem functions.  They may be still
-be introduced by existential destruction.  There ought to be another notation for
+Now `q` and `r` may not be referred to as skolem functions.  They may still be
+introduced by existential destruction.  There ought to be another notation for
 introduing them in a theorem body, but I can't think of one right now.
 
+Signature Syntax
+----------------
 
+A *clause* of a signature is a set of terms, which are variables and
+propositions.  The terms are separated by spaces.  A term may be:
+
+* A proposition, which is surrounded in square brackets.  Propositions have
+    a free-form syntax, in which the name of the proposition can go between
+    its arguments.  For example `[x divides y]` is an example usage or definition
+    of the proposition `[_ divides _]`.  What count as variables and what count
+    as structure depends on the surrounding quantification.  Parentheses occurring
+    in the syntax of a proposition ensure that that position is interpreted
+    as an expression. 
+* A variable clause, which is a list of variables (as barewords) followed by a
+    list of types (each introduced with a colon).  A type is shorthand for a
+    proposition: `x :nat` is shorthand for `[nat x]`. The spaces are interpreted
+    as part of the type until the next colon or opening bracket, so: 
+    `x y : list nat : sorted` is short for the propositions `[list nat x]`,
+    `[sorted x]`, `[list nat y]`, `[sorted y]`.
+
+A signature is:
+
+* A clause
+* An implication: `P -> Q`, where `P` and `Q` are clauses.
+
+Implication is *non*-associative, you have to insert parentheses to nest
+them.  Parentheses should be minimal, because of the conjunctive properties
+of clauses.
+
+We can now see how the `gcd` definition might be interpreted:
+
+    x y :int [x > 0] [y > 0]
+    -> 
+    gcd :int [gcd > 0] [gcd divides x] [gcd divides y]
+
+However, the quantifiers are still unclear.
+
+Quantification
+--------------
+
+Signatures are formulas in a logical calculus (it is unclear which one exactly,
+and it is rather unimportant because consistency is not necessary).  As such,
+the variables in theorems are quantified by universal and existential
+quantifiers.  These quantifiers and their destructors are the basis of data
+manipulation in sequent.
+
+Every variable in a variable clause is quantified.  The quantification depends
+on the position of the variable clause.
+
+* If it occurs to the immediate left of an implication clause, then the
+    quantification is universal.  `x y : nat -> ...` means 
+    `forall x, forall y, [nat x] [nat y], ...`.
+* If not, then the quantification is existential (which, as we will see later,
+    introduces a Skolem function). `x : nat -> y : nat` means 
+    `forall x, [nat x] -> exists y, [nat y]`.
+
+Skolem Functions
+----------------
+
+Every existential quantifier introduces a Skolem function 
