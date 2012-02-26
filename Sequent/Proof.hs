@@ -33,6 +33,15 @@ data Proof h
     -- drop a hypothesis
     | DropHyp Hyp (Proof h)
 
+instance Functor Proof where
+    fmap f Done = Done
+    fmap f (Suspend x) = Suspend (f x)
+    fmap f (Exact g h p) = Exact g h (fmap f p)
+    fmap f (Instance e hs l p) = Instance e hs l (fmap f p)
+    fmap f (ModusGoal hs l l' p) = ModusGoal hs l l' (fmap f p)
+    fmap f (FlattenHyp h ls p) = FlattenHyp h ls (fmap f p)
+    fmap f (DropHyp h p) = DropHyp h (fmap f p)
+
 newtype HoleCont = HoleCont {
     cont :: forall h. Proof h -> Proof h
 }
