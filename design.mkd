@@ -11,3 +11,50 @@ result to represent what the code did.
 Signatures play the role of functions in this language. A signature specifies
 inputs and outputs, including names and knowledge.
 
+The following three propositions form the definition of Divides.  When asked
+for a proof, they will be "proved by definition"; i.e.  moved into the
+assumptions when `Divides` is quantified over. (We will talk about numerals
+and the `*` symbol later).
+
+    x :nat   -> [1 Divides x]
+
+    x :nat   -> [x Divides 0]
+
+    x y :nat -> [x Divides x*y]
+
+We then define a division with remainder theorem:
+
+    x y :nat -> q r :nat [x = q*y + r] [r < y]
+
+This theorem has outputs (`q` and `r`) which must be computed, so you cannot
+simply prove by definition.  You can give expressions for `q` and `r`, however,
+and then explain the two returned properties in documentation. I don't know how
+yet.
+
+Finally, a `gcd` theorem.  This also returns a witness so it needs a
+computation and cannot simply be explained.  However, with what we have built
+up, we can compute it without any appeal to an underlying language.
+
+    x y :nat
+    ->
+    gcd :nat
+    [gcd Divides x] [gcd Divides y] 
+    ( [d' Divides x] [d' Divides y] -> [d' Divides gcd] )
+
+The witness from applying this theorem can be referred to as `gcd(x,y)`. It
+introduces obligations for `x:nat` and `y:nat`, and produces the knowledge
+`[gcd(x,y) Divides x]`, etc.
+
+Similarly, the division algorithm can be referred to as `q(x,y)` and `r(x,y)`,
+if left defined as above.  When one is applied, the suitably skolemized other
+is introduced into the context with it.  However, with these uninstructive
+names, we want to give it some context, so we can label the theorem:
+
+    division:
+    x y :nat -> q r :nat [x = q*y + r] [r < y]
+
+Now `q` and `r` may not be referred to as skolem functions.  They may be still
+be introduced by existential destruction.  There ought to be another notation for
+introduing them in a theorem body, but I can't think of one right now.
+
+
