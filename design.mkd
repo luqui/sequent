@@ -123,6 +123,9 @@ implication is assumed.
 Labeled Clauses
 ---------------
 
+There is a sophisticated syntax for dealing with labeled clauses, which play 
+the role of modules in Sequent.
+
 When a clause is labeled, it introduces a parameterized namespace into every
 scope in which it is directly assumed.  It is parameterized on the variables
 of its antecedent, and it has as "members" (of the namespace) the variables
@@ -166,6 +169,17 @@ the following are equivalent:
     gcd: (x y :nat -> gcd :nat) -> [gcd(2,4) = 2]
     (x y :nat -> gcd :nat) -> [gcd(2,4) = 2]
     
+Labels may have "import statements", introducing names into the surrounding scope.
+
+    Divide(r): (x y :nat -> q r :nat [x = q*y+r]) -> [r(x,y) = 0]
+    Divide(*): (x y :nat -> q r :nat [x = q*y+r]) -> [r(x,y) = 0]
+
+And the label may be omitted if an import statement is given:
+    
+    (*): (x y :nat -> q r :nat [x = q*y+r]) -> [r(x,y) = 0]
+    
+This is only possible when it would not cause ambiguities.
+
 When a labeled clause is used, its assumptions are introduces as obligations and
 all the knowledge in its consequents are introduced as hypotheses.  This statement
 
@@ -215,40 +229,6 @@ neither may lead with it.
     (x y :nat -> (*') : nat)
     ->
     [x*y = x*'y]
-
-Equivalences
-------------
-
-We would like to define shorthands to make the statements of our signatures more
-manageable.  However, definitions are not modular: they assume a one way
-relationship between the symbol defined what it is defined in terms of, thus
-singling out an idea which is "more primitive".  We would like to adopt the
-*principle of shifting foundation*, which allows multiple foundations for the
-same code.
-
-So, we do not have definitions but equivalences, saying that two phrasings are
-actually the same concept.
-
-    a b :nat -> (
-        [a divides b] === c :nat [c*a = b]
-    )
-
-This is essentially stating the two theorems:
-
-    a b :nat [a divides b] -> c :nat [c*a = b]
-    a b c :nat [c*a = b] -> [a divides b]
-
-Note how the quantification on `c` switched from existential to universal. They
-are isomorphic, and that isomorphism is employed while signatures are being
-reduced to normal form.
-
-These two theorems will probably be proved by definition (considering nothing
-more is known about the symbol `divides`, so there is nothing to prove it with);
-however note that the former requires a witness, and this must be constructed.
-We also differ from dependently-typed systems here, because `]a divides b]` does
-*not* contain a witness in its proof, so we must be able to construct this
-witness given only `a` and `b`. If we cannot, we do not consider the statements
-intuitionistically equivalent.
 
 Execution
 =========
@@ -321,11 +301,55 @@ that we don't realize that we *don't* need some information (though a looser
 search mode could be provided).  This is long-term stuff so I will leave it for
 now.
 
-Abstraction and Linking
+Techniques
+==========
+
+Sequent is a very different kind of language.  In this section we discuss programming
+patterns.
+
+Abstraction and Modules
 -----------------------
 
 The full form of signatures are completely quantified, closed terms.  There are
 no references to globals.  The full signature represents exactly the reasoning 
 that took place in the implementation, so any theorems/functions that are referenced 
-are included in its hypotheses.
+are included in its hypotheses.  Hence, the main function of a complex program will 
+depend on *all the reasoning in the program*, that is, the number of hypotheses will
+be proportional to the size of the program.
+
+To make this manageable, you may organize your hypotheses into theories, using them
+as namespaces.  Since the clauses in the consequent can depend on each other, this makes
+a natural organizational technique for modules.  For example, we may find it helpful to
+refer to a theory of unary naturals, so we can assume it as a hypothesis:
+
+    Nat: (->
+        nat :*
+        zero :nat
+        (x :nat -> succ :nat)
+        case: (x :nat -> [x = 0] \/ (-> y :nat [x = succ y]))
+    )
+    
+And then we can define a theory of utilities:
+
+    NatUtils: (->
+        (x y :Nat -> (+))
+        (x y :Nat -> (*))
+    )
+    
+The full form of `NatUtils` is parameterized over the nat siguature; i.e.:
+
+    NatUtils: (Nat: (-> nat :* zero :nat ...) ->
+        ...
+    )
+
+And one could make a module containing both:
+
+    Nat: (->
+        Nat(*): (-> ...)
+        NatUtils(*): (-> ...)
+    )
+    
+The database can store proofs for all of these; a proof of the latter `Nat` module
+would aggregate proofs for the others (how is this done -- we don't have (want?)
+a method for aggregating proofs).
 
