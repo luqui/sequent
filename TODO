@@ -1,8 +1,10 @@
 * Decide on syntax for nested clauses
+* Skolem functions
 * Generate programs
 * Decide on/refine syntax for relations
 * Fix incorrectness in proof engine (eg. free variable capture and the like)
-* Define tactic language, or start to switch UI to javascript
+* Define tactic language
+* Switch UI to javascript
 
 
 Done
