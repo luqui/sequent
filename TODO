@@ -1,10 +1,12 @@
 * Decide on syntax for nested clauses
 * Skolem functions
+* Discharge by documentation
 * Generate programs
 * Decide on/refine syntax for relations
 * Fix incorrectness in proof engine (eg. free variable capture and the like)
 * Define tactic language
 * Switch UI to javascript
+* Names and module/search system
 
 
 Done
