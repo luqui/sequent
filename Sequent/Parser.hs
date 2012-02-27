@@ -18,12 +18,10 @@ lex = P.makeTokenParser P.haskellDef
 
 clauseAtom :: Parser ClauseAtom
 clauseAtom = P.choice [
-    var,
     typ,
     rel,
     cls ] 
     where
-    var = AVar <$> P.identifier lex
     typ = AType <$> atomExpr <* P.symbol lex ":" <*> expr
     rel = convert <$> P.brackets lex (P.many relAtom)
         where
@@ -38,11 +36,19 @@ clauseAtom = P.choice [
         toArg (Right j) = [j]
     cls = AClause <$> P.braces lex clause
 
-clause :: Parser Clause
-clause = convert <$> P.many clauseAtom <* P.symbol lex "->" <*> P.many clauseAtom
+group :: Parser Group
+group = engroup <$> P.many atom
     where
-    convert hyps cons = zip (labels "H") hyps :- zip (labels "G") cons
-    labels h = map ((h ++) . show) [0..]
+    atom = P.choice [
+        Left <$> P.identifier lex,
+        Right <$> clauseAtom ]
+    engroup xs = 
+        let (vs,hs) = partitionEithers xs in
+        Group vs (zipWith label [0..] hs)
+    label n h = ("H" ++ show n, h)
+
+clause :: Parser Clause
+clause = (:-) <$> group <* P.symbol lex "->" <*> group
 
 expr :: Parser Expr
 expr = atomExpr

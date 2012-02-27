@@ -6,20 +6,18 @@ type Name = String
 type Label = String
 
 data ClauseAtom
-    = AVar Name
-    | AType Expr Expr
-    -- spaces in name represent argument positions
-    -- eg. " divides ".
+    = AType Expr Expr
     | ARel RelName [Expr]
     | AClause Clause
     deriving Eq
 
 type RelName = [Maybe String]
 
-type Side = [(Label, ClauseAtom)]
+data Group = Group [Name] [(Label, ClauseAtom)]
+    deriving Eq
 
 data Clause
-    = Side :- Side
+    = Group :- Group
     deriving Eq
 
 instance Show Clause where
@@ -34,7 +32,6 @@ instance Show Expr where
     show = showExpr True
 
 showAtom :: ClauseAtom -> String
-showAtom (AVar n) = n
 showAtom (AType e t) = showExpr True e ++ ":" ++ showExpr True t
 showAtom (ARel n xs) = "[" ++ expandRel n (map (showExpr True) xs) ++ "]"
 showAtom (AClause c) = "(" ++ showClause c ++ ")"
@@ -56,11 +53,14 @@ expandRel = \name args -> intercalate " " (atoms name args)
     atoms [] [] = []
 
 showClause :: Clause -> String
-showClause (hyps :- cons) = showl hyps ++ " -> " ++ showl cons
+showClause (hyps :- cons) = showg hyps ++ " -> " ++ showg cons
     where
-    showl = unwords . map (showAtom.snd)
+    showg (Group vs hs) = unwords (vs ++ map (showAtom.snd) hs)
 
 showClauseV :: Clause -> String
-showClauseV (hyps :- cons) = showl hyps ++ "->\n" ++ showl cons
+showClauseV (hyps :- cons) = showg hyps ++ "->\n" ++ showg cons
     where
-    showl = unlines . map (\(i,x) -> i ++ ": " ++ showAtom x)
+    showg (Group vs hs) = unlines $ 
+        mkVs vs ++ map (\(i,x) -> i ++ ": " ++ showAtom x) hs
+    mkVs [] = []
+    mkVs vs = [unwords vs]
