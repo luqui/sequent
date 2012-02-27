@@ -1,5 +1,6 @@
 * Decide on syntax for nested clauses
 * Generate programs
+* Decide on/refine syntax for relations
 * Fix incorrectness in proof engine (eg. free variable capture and the like)
 * Define tactic language
 
