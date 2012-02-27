@@ -56,7 +56,7 @@ Syntax
 ======
 
 The syntax of sequent is meant to mimic the conventions of mathematics, however
-there are a few divergences just to give it its own flavor.
+there are a few divergences, giving it its own flavor.
 
 Signatures
 ----------
