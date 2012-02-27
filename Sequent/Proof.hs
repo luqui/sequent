@@ -23,7 +23,7 @@ data Proof h
 
     -- discharge goal by exact match 
     --   with hypothesis
-    | Exact Goal Hyp h
+    | Exact Hyp Goal h
 
     -- modus ponens on a variable
     | Instance Expr (Hyp,Hyp) Label h
@@ -44,7 +44,7 @@ data Proof h
 
 instance Functor Proof where
     fmap f Done                  = Done
-    fmap f (Exact g h p)         = Exact g h (f p)
+    fmap f (Exact h g p)         = Exact h g (f p)
     fmap f (Instance e hs l p)   = Instance e hs l (f p)
     fmap f (Witness e g p)       = Witness e g (f p)
     fmap f (ModusGoal hs l l' p) = ModusGoal hs l l' (f p)
@@ -57,7 +57,7 @@ type Checker f = Clause -> Maybe (f Program)
 
 proofCheck1 :: (Applicative f) => Proof (Checker f) -> Checker f
 proofCheck1 Done (_ :- []) = return $ pure Program
-proofCheck1 (Exact (Goal gl) (Hyp hl) ps) (hyp :- con) = do
+proofCheck1 (Exact (Hyp hl) (Goal gl) ps) (hyp :- con) = do
     (g,con') <- dismember con gl
     h <- lookup hl hyp
     guard $ g == h
