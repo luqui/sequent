@@ -4,6 +4,8 @@ module Sequent.Proof
     ( Proof(..)
     , proofCheck1
     , Checker
+    , Hyp(..)
+    , Goal(..)
     )
 where
 
