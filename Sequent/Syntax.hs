@@ -19,7 +19,7 @@ type RelName = [Maybe String]
 type Side = [(Label, ClauseAtom)]
 
 data Clause
-    = ImplClause Side Side
+    = Side :- Side
     deriving Eq
 
 instance Show Clause where
@@ -56,11 +56,11 @@ expandRel = \name args -> intercalate " " (atoms name args)
     atoms [] [] = []
 
 showClause :: Clause -> String
-showClause (ImplClause hyps cons) = showl hyps ++ " -> " ++ showl cons
+showClause (hyps :- cons) = showl hyps ++ " -> " ++ showl cons
     where
     showl = unwords . map (showAtom.snd)
 
 showClauseV :: Clause -> String
-showClauseV (ImplClause hyps cons) = showl hyps ++ " -> " ++ showl cons
+showClauseV (hyps :- cons) = showl hyps ++ " -> " ++ showl cons
     where
     showl = unwords . map (\(i,x) -> showAtom x++"^"++show i)
