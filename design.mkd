@@ -40,17 +40,17 @@ up, we can compute it without any appeal to an underlying language.
 
     x y :nat
     ->
-    gcd :nat
-    [gcd Divides x] [gcd Divides y] 
-    ( [d' Divides x] [d' Divides y] -> [d' Divides gcd] )
+    gcd(x,y) :nat
+    [gcd(x,y) Divides x] [gcd(x,y) Divides y] 
+    ( [d' Divides x] [d' Divides y] -> [d' Divides gcd(x,y)] )
 
 The witness from applying this theorem can be referred to as `gcd(x,y)`. It
 introduces obligations for `x:nat` and `y:nat`, and produces the knowledge
 `[gcd(x,y) Divides x]`, etc.
 
-Similarly, the division algorithm can be referred to as `q(x,y)` and `r(x,y)`,
-if left defined as above.  When one is applied, the suitably skolemized other
-is introduced into the context with it.
+Similarly, the division algorithm can be referred to as `q(x=x,y=y)` and 
+`r(x=x,y=y)`, if left defined as above.  When one is applied, the suitably skolemized 
+other is introduced into the context with it.
 
 Signature Syntax
 ----------------
@@ -71,13 +71,18 @@ propositions.  The terms are separated by spaces.  A term may be:
     as part of the type until the next colon or opening bracket, so: 
     `x y : list nat : sorted` is short for the propositions `[list nat x]`,
     `[sorted x]`, `[list nat y]`, `[sorted y]`.
+* Another clause, surrounded in parentheses.
+
+Clauses may be labeled by putting a label name with a colon before them; e.g. 
+`Division: (x y :nat -> q r [x = q*y+r])`.  Labeling will be important
+later.
 
 A signature is:
 
 * A clause
 * An implication: `P -> Q`, where `P` and `Q` are clauses.
 
-Implication is *non*-associative, you have to insert parentheses to nest
+Implication is *non*-associative: you have to insert parentheses to nest
 them.  Parentheses should be minimal, because of the conjunctive properties
 of clauses.
 
@@ -103,38 +108,59 @@ on the position of the variable clause.
 
 * If it occurs to the immediate left of an implication clause, then the
     quantification is universal.  `x y : nat -> ...` means 
-    `forall x, forall y, [nat x] [nat y], ...`.
-* If not, then the quantification is existential (which, as we will see later,
-    introduces a Skolem function). `x : nat -> y : nat` means 
-    `forall x, [nat x] -> exists y, [nat y]`.
+    `forall x, forall y, [nat x] [nat y], ...`.  The variables are in scope
+    in both groups of the implication (both `P` and `Q` in `P -> Q`).
+* If not, then the quantification is existential.
 
-Skolem Functions
-----------------
+So, for example, `x : nat -> y : nat` means `forall x, [nat x] -> exists y, [nat y]`.
+The variable, possibly skolemized, is in scope in the conclusion group and
+everywhere in which the implication is assumed.
 
-Every existential quantifier introduces a Skolem function into every appropriate
-scope. An appropriate scope is one in which the existential appears in a strictly
-positive position (i.e. only to the right of arrows).  So:
+Labeled Clauses
+---------------
 
-    x y :nat -> gcd :nat
+When a clause is labeled, it introduces a parameterized namespace into every
+scope in which it is directly assumed.  It is parameterized on the variables
+of its antecedent, and it has as "members" (of the namespace) the variables
+of its consequent.  For example:
 
-Introduces a `gcd` Skolem function in the entire scope of the theorem.  Consider
-this generalized version:
-
-    (x y :nat -> q r [x = q*y + r]) 
-    x y :nat
+    Gcd: (x y :nat -> gcd :nat)
     ->
-    gcd :nat
+    [Gcd(2,4).gcd = 2]
 
-Like the last example, `gcd` appears in a strictly positive position for the
-scope of the theorem.  However, `q` and `r` appear in a strictly positive
-position for the scope of the *proof* (in which `x y :nat -> q r [...]` is used
-as an assumption), so the proof may use the `q(x,y)` and `r(x,y)` Skolem
-functions.
+We see here that the order of variables in the clause matters.  The 
+conclusion may also refer to its parameters in named style:
 
-The parameters of the skolem function depend on the unshared assumptions between
-the user of the function and the occurrence of the existential.  Usage of the
-function, similarly, instantiates any unshared hypotheses.  Including hypotheses
-in the environment reduces the parameters of the Skolem function.
+    [Gcd(x=2, y=4).gcd = 2]
+
+Right-nested clauses introduce nested namespaces:
+
+    Foo: (x y -> Bar: (z -> baz))
+    ->
+    Foo(2,4).Bar(6).baz
+    
+When the label is the same as the variable, the member can be omitted:
+
+    gcd: (x y :nat -> gcd :nat)
+    ->
+    [gcd(2,4) = 2]
+
+This dynamic nests.
+
+    foo: (x -> foo: (y -> foo))
+    ->
+    foo(x)(y)
+    
+When a group has exactly one variable in its consequent, and it is unambiguous (no
+other group has the same variable in its consequent, and the name is used as a
+label), the default name for the hypothesis is the name of that variable.  So
+the following are equivalent:
+
+    Gcd: (x y :nat -> gcd :nat) -> [Gcd(x=2,y=4).gcd = 2]
+    Gcd: (x y :nat -> gcd :nat) -> [Gcd(2,4).gcd = 2]
+    gcd: (x y :nat -> gcd :nat) -> [gcd(2,4).gcd = 2]
+    gcd: (x y :nat -> gcd :nat) -> [gcd(2,4) = 2]
+    (x y :nat -> gcd :nat) -> [gcd(2,4) = 2]
 
 Equivalences
 ------------
