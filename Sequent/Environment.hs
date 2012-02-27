@@ -40,9 +40,6 @@ proofCheck c = cata scheck c
     where
     scheck :: PfLink (Proof.Checker Obligations) -> Proof.Checker Obligations
     scheck (PfLink (Suspend ())) c = return $ Const [(c, id)]
-    -- Maybe (Const [(Clause, Pf -> Pf)]
-    -- p :: Proof (Proof.Checker Obligations)
-    -- fmap.const :: Pf -> Pf
     scheck (PfLink (Normal p)) c = (fmap.mapConst.fmap.fmap.fmap.xform) p (Proof.proofCheck1 p c)
 
     xform :: Proof.Proof a -> Pf -> Pf
