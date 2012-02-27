@@ -301,55 +301,59 @@ that we don't realize that we *don't* need some information (though a looser
 search mode could be provided).  This is long-term stuff so I will leave it for
 now.
 
-Techniques
-==========
+Database
+--------
 
-Sequent is a very different kind of language.  In this section we discuss programming
-patterns.
+The database of programs stores *anonymous* (but documented) signatures with
+their programs.  A full signature represents exactly the reasoning that took
+place in the proof/program, so it includes all of its assumptions.  However,
+many useful functions depend on large theories.  So a database entry is
+a signature paired with an environment, where an environment is a mapping
+from names to other entries.  
 
-Abstraction and Modules
------------------------
+So when you import something from the database, it comes linked with a concrete
+environment which enters the environment of what you are working on. 
 
-The full form of signatures are completely quantified, closed terms.  There are
-no references to globals.  The full signature represents exactly the reasoning 
-that took place in the implementation, so any theorems/functions that are referenced 
-are included in its hypotheses.  Hence, the main function of a complex program will 
-depend on *all the reasoning in the program*, that is, the number of hypotheses will
-be proportional to the size of the program.
+For example, let's say we defined a library for unary naturals.
 
-To make this manageable, you may organize your hypotheses into theories, using them
-as namespaces.  Since the clauses in the consequent can depend on each other, this makes
-a natural organizational technique for modules.  For example, we may find it helpful to
-refer to a theory of unary naturals, so we can assume it as a hypothesis:
-
-    Nat: (->
+    -- (1)
+    (->
         nat :*
         zero :nat
         (x :nat -> succ :nat)
-        case: (x :nat -> [x = 0] \/ (-> y :nat [x = succ y]))
     )
     
-And then we can define a theory of utilities:
+Someone else wants to define some nice utilities like addition and multiplication.
+To do so, he imports this library as `Nat`, giving him the context:
 
-    NatUtils: (->
-        (x y :Nat -> (+))
-        (x y :Nat -> (*))
-    )
-    
-The full form of `NatUtils` is parameterized over the nat siguature; i.e.:
+    Nat: (1)
+    ->
 
-    NatUtils: (Nat: (-> nat :* zero :nat ...) ->
-        ...
-    )
+With which he defines several utilities:
 
-And one could make a module containing both:
+    Nat: (1)
+    ->
+    (x y :Nat.nat -> (+) :Nat.nat)
+    (x y :Nat.nat -> (*) :Nat.nat)
 
-    Nat: (->
-        Nat(*): (-> ...)
-        NatUtils(*): (-> ...)
-    )
-    
-The database can store proofs for all of these; a proof of the latter `Nat` module
-would aggregate proofs for the others (how is this done -- we don't have (want?)
-a method for aggregating proofs).
+The above is the full form of his theorem, but in the database it linked with
+an environment that fixes `Nat` to what he imported.  So if someone imports his
+utiliy library, the `Nat` from the database is imported into their local environment 
+and they see
 
+    Nat: (1)
+    NatUtils: (-> (x y :Nat.nat -> (+) :Nat.nat) (x y :Nat.nat -> (*) :Nat.nat))
+
+i.e. `NatUtils` is not imported abstractly, but is specialized to a specific `Nat`
+(which is then assumed and linked).
+
+This introduces an important codependency in whatever is using `NatUtils`, namely,
+that the `Nat.nat` that `NatUtils` talks about is the same one as one that is mentioned
+by `Nat.nat` elsewhere. 
+
+Linkages can be reassigned when importing theorems from the database.  For example,
+you could say "import `NatUtils` but don't link `Nat`", which would give:
+
+    NatUtils: (Nat: (1) -> ...)
+
+Allowing you to supply your own `Nat`.
