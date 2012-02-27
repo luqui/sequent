@@ -68,7 +68,8 @@ proofCheck1 (Instance ax (Hyp b,Hyp b') zlabel ps) (hyp :- con) = do
     (bx, hyp') <- dismember bhyp b'
     AVar n <- return bx
     let substs = (fmap.fmap) (subst n ax)
-    ps (substs hyp' :- substs con)
+    let newhyp = (zlabel, AClause (substs hyp' :- substs bcon))
+    ps ((hyp ++ [newhyp]) :- con)
 proofCheck1 (Witness e (Goal g) ps) (hyp :- con) = do
     (AVar n, con') <- dismember con g
     ps (hyp :- (fmap.fmap) (subst n e) con')
@@ -96,9 +97,7 @@ labelFree xs x = isNothing (lookup x xs)
 subst :: Name -> Expr -> ClauseAtom -> ClauseAtom
 subst n e = go
     where
-    go (AVar n') -- TODO free var capture
-        | n' == n = AVar n'
-        | otherwise = AVar n'
+    go (AVar n') = AVar n' -- TODO free var capture
     go (AType v t)
         = AType (substExpr n e v) (substExpr n e t)
     go (ARel n' es)

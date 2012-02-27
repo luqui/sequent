@@ -20,7 +20,8 @@ clauseAtom :: Parser ClauseAtom
 clauseAtom = P.choice [
     var,
     typ,
-    rel ]
+    rel,
+    cls ] 
     where
     var = AVar <$> P.identifier lex
     typ = AType <$> atomExpr <* P.symbol lex ":" <*> expr
@@ -35,6 +36,7 @@ clauseAtom = P.choice [
         toName (Right j) = Nothing
         toArg (Left i) = []
         toArg (Right j) = [j]
+    cls = AClause <$> P.braces lex clause
 
 clause :: Parser Clause
 clause = convert <$> P.many clauseAtom <* P.symbol lex "->" <*> P.many clauseAtom

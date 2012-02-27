@@ -48,7 +48,6 @@ proofCheck c = cata scheck c
     xform :: Proof.Proof a -> Pf -> Pf
     xform p q = Roll . PfLink . Normal $ fmap (const q) p
 
-
 sequent :: String -> IO Environment
 sequent s = do
     case Parser.parse Parser.clause s of
@@ -60,7 +59,7 @@ interactive = go
     where
     go env = do
         display env
-        maybeLine <- Readline.readline "> "
+        maybeLine <- readline
         case maybeLine of
             Nothing -> return env
             Just line -> do
@@ -75,6 +74,11 @@ interactive = go
                                     return env
                                 | otherwise         -> go env'
 
+readline = do
+    mline <- Readline.readline "> "
+    case mline of
+        Nothing -> return Nothing
+        Just line -> Readline.addHistory line >> return (Just line)
 
 parseProof = (,) <$> (fromIntegral <$> P.natural lex) <*> P.choice [
     "done"     --> pure (const Proof.Done),
