@@ -17,12 +17,8 @@ parse p = P.parse p "<input>"
 lex = P.makeTokenParser P.haskellDef
 
 clauseAtom :: Parser ClauseAtom
-clauseAtom = P.choice [
-    typ,
-    rel,
-    cls ] 
+clauseAtom = P.choice [ rel, cls ] 
     where
-    typ = AType <$> atomExpr <* P.symbol lex ":" <*> expr
     rel = convert <$> P.brackets lex (P.many relAtom)
         where
         relAtom = P.choice [
@@ -34,7 +30,7 @@ clauseAtom = P.choice [
         toName (Right j) = Nothing
         toArg (Left i) = []
         toArg (Right j) = [j]
-    cls = AClause <$> P.braces lex clause
+    cls = AClause <$> P.parens lex clause
 
 group :: Parser Group
 group = engroup <$> P.many atom
