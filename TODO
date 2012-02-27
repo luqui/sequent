@@ -1,0 +1,8 @@
+* Decide on syntax for nested clauses
+* Generate programs
+* Fix incorrectness in proof engine (eg. free variable capture and the like)
+* Define tactic language
+
+
+Done
+====
