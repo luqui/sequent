@@ -40,9 +40,9 @@ up, we can compute it without any appeal to an underlying language.
 
     x y :nat
     ->
-    gcd(x,y) :nat
-    [gcd(x,y) Divides x] [gcd(x,y) Divides y] 
-    ( [d' Divides x] [d' Divides y] -> [d' Divides gcd(x,y)] )
+    gcd :nat
+    [gcd Divides x] [gcd Divides y] 
+    ( [d' Divides x] [d' Divides y] -> [d' Divides gcd] )
 
 The witness from applying this theorem can be referred to as `gcd(x,y)`. It
 introduces obligations for `x:nat` and `y:nat`, and produces the knowledge
@@ -52,8 +52,14 @@ Similarly, the division algorithm can be referred to as `q(x=x,y=y)` and
 `r(x=x,y=y)`, if left defined as above.  When one is applied, the suitably skolemized 
 other is introduced into the context with it.
 
-Signature Syntax
-----------------
+Syntax
+======
+
+The syntax of sequent is meant to mimic the conventions of mathematics, however
+there are a few divergences just to give it its own flavor.
+
+Signatures
+----------
 
 A *clause* of a signature is a set of terms, which are variables and
 propositions.  The terms are separated by spaces.  A term may be:
@@ -71,16 +77,13 @@ propositions.  The terms are separated by spaces.  A term may be:
     as part of the type until the next colon or opening bracket, so: 
     `x y : list nat : sorted` is short for the propositions `[list nat x]`,
     `[sorted x]`, `[list nat y]`, `[sorted y]`.
-* Another clause, surrounded in parentheses.
+* A signature, surrounded in parentheses.
 
-Clauses may be labeled by putting a label name with a colon before them; e.g. 
-`Division: (x y :nat -> q r [x = q*y+r])`.  Labeling will be important
+Signatures may be labeled by putting a label name with a colon before them; 
+e.g. `Division: (x y :nat -> q r [x = q*y+r])`.  Labeling will be important
 later.
 
-A signature is:
-
-* A clause
-* An implication: `P -> Q`, where `P` and `Q` are clauses.
+A signature is an implication: `P -> Q`, where `P` and `Q` are clauses.
 
 Implication is *non*-associative: you have to insert parentheses to nest
 them.  Parentheses should be minimal, because of the conjunctive properties
@@ -112,9 +115,10 @@ on the position of the variable clause.
     in both groups of the implication (both `P` and `Q` in `P -> Q`).
 * If not, then the quantification is existential.
 
-So, for example, `x : nat -> y : nat` means `forall x, [nat x] -> exists y, [nat y]`.
-The variable, possibly skolemized, is in scope in the conclusion group and
-everywhere in which the implication is assumed.
+So, for example, `x : nat -> y : nat` means `forall x, ([nat x] -> exists y, [nat y])`.
+`x` is in scope for the body (antecedent *and* consequent) of the implication and
+`y` is in scope for the consequent and, suitably Skolemized, everywhere the
+implication is assumed.
 
 Labeled Clauses
 ---------------
@@ -139,7 +143,7 @@ Right-nested clauses introduce nested namespaces:
     ->
     Foo(2,4).Bar(6).baz
     
-When the label is the same as the variable, the member can be omitted:
+When the label is the same as the variable, the member access can be omitted:
 
     gcd: (x y :nat -> gcd :nat)
     ->
@@ -161,6 +165,56 @@ the following are equivalent:
     gcd: (x y :nat -> gcd :nat) -> [gcd(2,4).gcd = 2]
     gcd: (x y :nat -> gcd :nat) -> [gcd(2,4) = 2]
     (x y :nat -> gcd :nat) -> [gcd(2,4) = 2]
+    
+When a labeled clause is used, its assumptions are introduces as obligations and
+all the knowledge in its consequents are introduced as hypotheses.  This statement
+
+    gcd (x y :nat -> gcd :nat)
+    ->
+    [gcd(2,4) = 2]
+    
+has the implicit proof state
+
+    gcd (x y :nat -> gcd :nat)
+    gcd(2,4) : nat
+    ->
+    2:nat
+    4:nat
+    [gcd(2,4) = 2]
+
+That is, for it to be valid to use `gcd` on `2` and `4` we have to show that `2` and `4` are
+`nat`s.
+
+Operators
+---------
+
+Sequent uses the Haskell-style convention that names can be operatorified by
+placing them in backticks:
+
+    gcd(2,4)
+    2 `gcd` 4
+    
+and operators can be namified by placing them in parentheses:
+
+    x * y
+    (*)(x,y)
+
+In such a way, hypotheses can be named after operators as well, so you
+could assume a multiplication operator like so:
+
+    (*): (x y :nat -> (*) :nat)
+    
+Which is equivalent to:
+
+    (x y :nat -> (*) :nat)
+    
+The prime character `'` is both a valid identifier and operator character, and
+neither may lead with it.
+
+    (x y :nat -> (*) :nat)
+    (x y :nat -> (*') : nat)
+    ->
+    [x*y = x*'y]
 
 Equivalences
 ------------
@@ -175,10 +229,8 @@ same code.
 So, we do not have definitions but equivalences, saying that two phrasings are
 actually the same concept.
 
-    a b :nat (
-        [a divides b]
-        ===
-        c :nat [c*a = b]
+    a b :nat -> (
+        [a divides b] === c :nat [c*a = b]
     )
 
 This is essentially stating the two theorems:
@@ -198,47 +250,12 @@ We also differ from dependently-typed systems here, because `]a divides b]` does
 witness given only `a` and `b`. If we cannot, we do not consider the statements
 intuitionistically equivalent.
 
-Environment
------------
+Execution
+=========
 
-Now, there is the pressing question: what do proofs look like? The answer, as I
-hinted in the introduction, is nothing.  Proofs are created in an interactive
-environment and are immutable and (in principle) unviewable forever.
-
-The environment provides:
-
-* A way to state signatures/theorems that need impliementation/proof.
-* A "tactic language" (though not necessarily text-based) to produce
-    implementations/proofs.
-* A way to introduce and discharge hypotheses and goals.
-* A search engine for previously defined signatures
-
-The environment has the ability to edit anything about the context.  If you are
-editing a proof, you may introduce a hypotheses into the scope of the theorem
-(hence modifying its statement), or into an outer, more global scope (if you
-forgot something about the structures you are using).  You may use the tactic
-language even when you are not editing a proof, and this modifies the shared
-context (eg. it can introduce hypotheses for all further proofs in this
-context).
-
-You may discharge goals by either proving them (matching them up with a
-hypothesis) or by *documenting* them: admitting them and providing an english
-explanation about why this is true.  This documentation goes into the detail
-view of theorems, so we can see what non-formal assumptions have been made.
-
-The search engine is whatever I can make of it; it's a complex goal.  But it
-ought to be as powerful as possible: you can give it matching criteria for
-theorems, e.g. you could query a la Hoogle:
-
-    x y : nat -> z : nat
-
-This will search for theorems that require at least two `nat`s as hypotheses and
-give at least a `nat` as a result.  This is not checking for subtypes, but
-rather for a sense of matching: often we know what kind of information we will
-need to compute something, but we may not realize how much. It is not common
-that we don't realize that we *don't* need some information (though a looser
-search mode could be provided).  This is long-term stuff so I will leave it for
-now.
+Sequent is not directly executable; rather, it is a code generation tool.  Think
+of it as a sophisticated type checker living on top of whatever language you like, 
+where all the types are erased when compiled.
 
 Object Language
 ---------------
@@ -260,16 +277,55 @@ that language.  Like everything, it is abstracted over, so the parts of the
 implementation that do not depend on the object language can be shared between
 different object languages.
 
-Abstraction and Tags
---------------------
+Environment
+===========
+
+Now, we have seen a lot of signatures, but what do their implementations look
+like? The answer, as I hinted in the introduction, is nothing.  Signtatures
+are the record of a sculture, which is created interactively and has no
+(user-facing) visual representation without replaying the scuplting process.
+
+The environment provides:
+
+* A way to state signatures/theorems that need impliementation/proof.
+* A "tactic language" (though not necessarily text-based) to produce
+    implementations/proofs.
+* A way to introduce and discharge hypotheses and goals.
+* A search engine for previously defined signatures
+
+The environment has the ability to edit anything about the context.  If you are
+editing a proof, you may introduce a hypotheses into the scope of the theorem
+(hence modifying its statement), or into an outer, more global scope (if you
+forgot something about the structures you are using).  You may use the tactic
+language even when you are not editing a proof, and this modifies the shared
+context (eg. it can introduce hypotheses for all further proofs in this
+context).
+
+You may discharge goals by either proving them (matching them up with a
+hypothesis) or by *documenting* them: admitting them and providing an english
+explanation about why it should be true .  This documentation goes into the 
+detail view of theorems, so we can see what non-formal assumptions have been 
+made.
+
+The search engine is whatever I can make of it; it's a complex goal.  But it
+ought to be as powerful as possible: you can give it matching criteria for
+theorems, e.g. you could query a la Hoogle:
+
+    x y : nat -> z : nat
+
+This will search for theorems that require at least two `nat`s as hypotheses and
+give at least a `nat` as a result.  This is not checking for subtypes, but
+rather for a sense of matching: often we know what kind of information we will
+need to compute something, but we may not realize how much. It is not common
+that we don't realize that we *don't* need some information (though a looser
+search mode could be provided).  This is long-term stuff so I will leave it for
+now.
+
+Abstraction and Linking
+-----------------------
 
 The full form of signatures are completely quantified, closed terms.  There are
-no references to globals.  For some definitions, this quantification context
-could be quite large.  That's OK, since to use them you should important an
-entire vocabulary into your context.  This will discharge most of the hypotheses
-and make the theorem more manageable.
+no references to globals.  The full signature represents exactly the reasoning 
+that took place in the implementation, so any theorems/functions that are referenced 
+are included in its hypotheses.
 
-Even if you have imported necessary vocabulary, it is always possible to import
-a previously-defined signature more abstractly.  The exact mechanism depends on
-the environment, but it essentially alpha renaming: a refusal to expand the
-hypotheses of a signature so you can do it manually.
