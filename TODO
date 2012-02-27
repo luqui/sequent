@@ -2,7 +2,7 @@
 * Generate programs
 * Decide on/refine syntax for relations
 * Fix incorrectness in proof engine (eg. free variable capture and the like)
-* Define tactic language
+* Define tactic language, or start to switch UI to javascript
 
 
 Done
