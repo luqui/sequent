@@ -3,7 +3,7 @@ module Sequent.Syntax where
 import Data.List (intercalate)
 
 type Name = String
-type Label = Integer
+type Label = String
 
 data ClauseAtom
     = AVar Name
@@ -61,6 +61,6 @@ showClause (hyps :- cons) = showl hyps ++ " -> " ++ showl cons
     showl = unwords . map (showAtom.snd)
 
 showClauseV :: Clause -> String
-showClauseV (hyps :- cons) = showl hyps ++ " -> " ++ showl cons
+showClauseV (hyps :- cons) = showl hyps ++ "->\n" ++ showl cons
     where
-    showl = unwords . map (\(i,x) -> showAtom x++"^"++show i)
+    showl = unlines . map (\(i,x) -> i ++ ": " ++ showAtom x)

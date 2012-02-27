@@ -92,16 +92,18 @@ parseProof = (,) <$> (fromIntegral <$> P.natural lex) <*> P.choice [
     lex = Parser.lex
     infix 0 --> 
     n --> p = P.reserved lex n *> (p <*> pure ())
-    label = P.natural lex
+    label = P.identifier lex
     hyp = Proof.Hyp <$> label
     goal = Proof.Goal <$> label
     expr = Parser.expr
-    
+
+indent :: String -> String -> String
+indent by = unlines . map (by ++) . lines
  
 display :: Environment -> IO ()
 display env = 
     forM_ (zip [0..] (goals env)) $ \(i,(c,_)) ->
-        putStrLn $ show i ++ ":: " ++ showClauseV c
+        putStrLn $ show i ++ "::\n" ++ indent "  " (showClauseV c)
 
 tactic :: Proof.Proof () -> Pf
 tactic = Roll . PfLink . Normal . fmap (const . Roll . PfLink $ Suspend ())

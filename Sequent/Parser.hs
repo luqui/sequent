@@ -41,7 +41,8 @@ clauseAtom = P.choice [
 clause :: Parser Clause
 clause = convert <$> P.many clauseAtom <* P.symbol lex "->" <*> P.many clauseAtom
     where
-    convert hyps cons = zip [0..] hyps :- zip [0..] cons
+    convert hyps cons = zip (labels "H") hyps :- zip (labels "G") cons
+    labels h = map ((h ++) . show) [0..]
 
 expr :: Parser Expr
 expr = atomExpr
