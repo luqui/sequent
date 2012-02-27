@@ -30,8 +30,11 @@ clauseAtom = P.choice [
                 Left <$> P.identifier lex,
                 Right <$> P.parens lex expr
             ]
-        convert xs = let (names, args) = partitionEithers xs in
-                     ARel (intercalate "_" names) args
+        convert xs = ARel (map toName xs) (concatMap toArg xs)
+        toName (Left i) = Just i
+        toName (Right j) = Nothing
+        toArg (Left i) = []
+        toArg (Right j) = [j]
 
 clause :: Parser Clause
 clause = convert <$> P.many clauseAtom <* P.symbol lex "->" <*> P.many clauseAtom

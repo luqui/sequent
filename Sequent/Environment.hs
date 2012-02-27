@@ -2,6 +2,7 @@ module Sequent.Environment where
 
 import Sequent.Proof
 import Sequent.Syntax
+import qualified Sequent.Parser as Parser
 import Data.IORef
 import Control.Applicative
 import Control.Monad (forM_, when)
@@ -18,6 +19,9 @@ toConts env = [ (c, Environment (clause env) . cont hc) | (c, hc) <- holes ]
     holes = holeConts checked
 
 newtype IOEnv = IOEnv (IORef Environment)
+
+proofIO :: IOEnv -> IO (Proof ())
+proofIO (IOEnv r) = proof <$> readIORef r
 
 newIOEnv :: Clause -> IO IOEnv
 newIOEnv c = IOEnv <$>  newIORef (Environment c (Suspend ()))

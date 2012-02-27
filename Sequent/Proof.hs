@@ -7,8 +7,8 @@ import Data.Maybe (isNothing)
 import Control.Arrow (second)
 import Sequent.Syntax
 
-data Hyp = Hyp Label
-data Goal = Goal Label
+newtype Hyp  = Hyp Label  deriving Show
+newtype Goal = Goal Label deriving Show
 
 data Proof h
     = Done
@@ -23,6 +23,9 @@ data Proof h
     -- modus ponens on a variable
     | Instance Expr (Hyp,Hyp) Label (Proof h)
 
+    -- witness an existential goal
+    | Witness Expr Goal (Proof h)
+
     -- modus ponens to introduce a goal for a hypothesis's hypothesis
     | ModusGoal (Hyp,Hyp) Label Label (Proof h)
 
@@ -32,12 +35,14 @@ data Proof h
 
     -- drop a hypothesis
     | DropHyp Hyp (Proof h)
+    deriving Show
 
 instance Functor Proof where
     fmap f Done = Done
     fmap f (Suspend x) = Suspend (f x)
     fmap f (Exact g h p) = Exact g h (fmap f p)
     fmap f (Instance e hs l p) = Instance e hs l (fmap f p)
+    fmap f (Witness e g p) = Witness e g (fmap f p)
     fmap f (ModusGoal hs l l' p) = ModusGoal hs l l' (fmap f p)
     fmap f (FlattenHyp h ls p) = FlattenHyp h ls (fmap f p)
     fmap f (DropHyp h p) = DropHyp h (fmap f p)
@@ -54,6 +59,7 @@ holeConts Done = []
 holeConts (Suspend h) = [(h, HoleCont id)]
 holeConts (Exact g h p) = (fmap.fmap) (mCont (Exact g h)) (holeConts p)
 holeConts (Instance e hs l p) = (fmap.fmap) (mCont (Instance e hs l)) (holeConts p)
+holeConts (Witness e g p) = (fmap.fmap) (mCont (Witness e g)) (holeConts p)
 holeConts (ModusGoal hs l l' p) = (fmap.fmap) (mCont (ModusGoal hs l l')) (holeConts p)
 holeConts (FlattenHyp h ls p) = (fmap.fmap) (mCont (FlattenHyp h ls)) (holeConts p)
 holeConts (DropHyp h p) = (fmap.fmap) (mCont (DropHyp h)) (holeConts p)
@@ -65,7 +71,7 @@ proofCheck c@(ImplClause hyp con) (Exact (Goal gl) (Hyp hl) ps) = try c $ do
     let con' = reverse precon' ++ postcon'
     h <- lookup hl hyp
     guard $ g == h
-    return $ proofCheck (ImplClause hyp con') ps
+    return $ Exact (Goal gl) (Hyp hl) $ proofCheck (ImplClause hyp con') ps
 proofCheck c@(ImplClause hyp con) (Instance ax (Hyp b,Hyp b') zlabel ps) = try c $ do
     guard $ isNothing (lookup zlabel hyp)
     AClause (ImplClause bhyp bcon) <- lookup b hyp
@@ -73,7 +79,12 @@ proofCheck c@(ImplClause hyp con) (Instance ax (Hyp b,Hyp b') zlabel ps) = try c
     AVar n <- return bx
     let hyp' = map (second (subst n ax)) (preb' ++ postb')
     let con' = map (second (subst n ax)) bcon
-    return $ proofCheck (ImplClause (bhyp ++ [(zlabel, AClause (ImplClause hyp' con'))]) bcon) ps
+    return $ Instance ax (Hyp b, Hyp b') zlabel $
+             proofCheck (ImplClause (bhyp ++ [(zlabel, AClause (ImplClause hyp' con'))]) bcon) ps
+proofCheck c@(ImplClause hyp con) (Witness e (Goal g) ps) = try c $ do
+    (preg, AVar n, postg) <- dismember con g
+    let con' = map (second (subst n e)) (preg ++ postg)
+    return $ Witness e (Goal g) $ proofCheck (ImplClause hyp con') ps
 proofCheck c@(ImplClause hyp con) (ModusGoal (Hyp b, Hyp b') hlabel glabel ps) = try c $ do
     guard $ isNothing (lookup hlabel hyp)
     guard $ isNothing (lookup glabel con)
@@ -82,15 +93,15 @@ proofCheck c@(ImplClause hyp con) (ModusGoal (Hyp b, Hyp b') hlabel glabel ps) =
     let hyp' = hyp ++ [(hlabel, AClause (ImplClause (preb' ++ postb') bcon))]
     let con' = con ++ [(glabel, bx)]
     -- TODO: bx must not have any variables bound in preb'
-    return $ proofCheck (ImplClause hyp' con') ps
+    return $ ModusGoal (Hyp b, Hyp b') hlabel glabel $ proofCheck (ImplClause hyp' con') ps
 proofCheck c@(ImplClause hyp con) (FlattenHyp (Hyp h) labels ps) = try c $ do
     guard $ all (isNothing.flip lookup hyp) labels
     AClause (ImplClause [] hcon) <- lookup h hyp
     let hyp' = hyp ++ zip labels (map snd hcon)
-    return $ proofCheck (ImplClause hyp' con) ps
-proofCheck c@(ImplClause hyp con) (DropHyp (Hyp h) ps) = try c $ do
-    (preh, h, posth) <- dismember hyp h
-    return $ proofCheck (ImplClause (preh ++ posth) con) ps
+    return $ FlattenHyp (Hyp h) labels $ proofCheck (ImplClause hyp' con) ps
+proofCheck c@(ImplClause hyp con) (DropHyp (Hyp i) ps) = try c $ do
+    (preh, h, posth) <- dismember hyp i
+    return $ DropHyp (Hyp i) $ proofCheck (ImplClause (preh ++ posth) con) ps
 proofCheck c _ = Suspend c
 
 subst :: Name -> Expr -> ClauseAtom -> ClauseAtom
