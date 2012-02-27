@@ -12,7 +12,7 @@ import Sequent.Fixpoint
 import Data.IORef
 import Control.Applicative
 import Control.Monad (forM_, when, guard)
-import qualified System.Console.SimpleLineEditor as Readline
+import qualified System.Console.Readline as Readline
 
 newtype PfLink r = PfLink (Suspension () (Proof.Proof r))
 
@@ -56,15 +56,11 @@ sequent s = do
         Right cl -> interactive (Environment cl [(cl, id)])
 
 interactive :: Environment -> IO Environment
-interactive = \env -> do
-    Readline.initialise
-    env' <- go env
-    Readline.restore
-    return env'
+interactive = go
     where
     go env = do
         display env
-        maybeLine <- Readline.getLineEdited "> "
+        maybeLine <- Readline.readline "> "
         case maybeLine of
             Nothing -> return env
             Just line -> do
@@ -74,7 +70,9 @@ interactive = \env -> do
                         case applyProof n (tactic proof) env of
                             Nothing -> putStrLn "Proof error" >> go env
                             Just env'
-                                | null (goals env') -> return env
+                                | null (goals env') -> do
+                                    putStrLn "Definition complete"
+                                    return env
                                 | otherwise         -> go env'
 
 
