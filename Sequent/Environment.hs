@@ -31,7 +31,7 @@ display (IOEnv r) = do
     env <- readIORef r
     let conts = toConts env
     forM_ (zip [0..] conts) $ \(i,(c,_)) -> 
-        putStrLn $ show i ++ ": " ++ showClause c
+        putStrLn $ show i ++ ":: " ++ showClauseV c
 
 applyTactic :: IOEnv -> Int -> Proof () -> IO ()
 applyTactic (IOEnv r) i pf = do

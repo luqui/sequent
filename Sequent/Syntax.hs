@@ -56,7 +56,11 @@ expandRel = \name args -> intercalate " " (atoms name args)
     atoms [] [] = []
 
 showClause :: Clause -> String
-showClause (ImplClause hyps cons) = shyps ++ " -> " ++ scons
+showClause (ImplClause hyps cons) = showl hyps ++ " -> " ++ showl cons
     where
-    shyps = unwords $ map (showAtom.snd) hyps
-    scons = unwords $ map (showAtom.snd) cons
+    showl = unwords . map (showAtom.snd)
+
+showClauseV :: Clause -> String
+showClauseV (ImplClause hyps cons) = showl hyps ++ " -> " ++ showl cons
+    where
+    showl = unwords . map (\(i,x) -> showAtom x++"^"++show i)
