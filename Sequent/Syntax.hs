@@ -40,7 +40,16 @@ showAtom (AClause c) = "(" ++ showClause c ++ ")"
 
 showExpr :: Expr -> String
 showExpr (VarExpr n) = n
-showExpr (SkolemExpr l es v) = l ++ "(" ++ intercalate "," (map showExpr es) ++ ")." ++ showExpr v
+showExpr sk@(SkolemExpr l es v) = l ++ showSkolem l sk
+    where
+    showSkolem cx (VarExpr n)
+        | n == cx = ""
+        | otherwise = "." ++ n
+    showSkolem cx (SkolemExpr l es v)
+        | l == cx = args ++ showSkolem cx v
+        | otherwise = "." ++ l ++ args ++ showSkolem l v
+        where
+        args = "(" ++ intercalate "," (map showExpr es) ++ ")"
 
 showRel :: RelName -> [String] -> String
 showRel = \name args -> "[" ++ intercalate " " (atoms name args) ++ "]"
