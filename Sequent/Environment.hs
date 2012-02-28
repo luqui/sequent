@@ -99,11 +99,9 @@ readline = do
 parseProof = (,) <$> (fromIntegral <$> P.natural lex) <*> P.choice [
     "done"     --> pure (const Proof.Done),
     "exact"    --> Proof.Exact <$> hyp <*> goal,
-    "instance" --> Proof.Instance <$> expr <*> ((,) <$> hyp <*> label) <*> label,
     "witness"  --> Proof.Witness <$> label <*> expr,
-    "modus"    --> Proof.ModusGoal <$> ((,) <$> hyp <*> hyp) <*> label <*> label,
-    "flatten"  --> Proof.FlattenHyp <$> hyp <*> list expr <*> list label <*> list label <*> pure (),
-    "drop"     --> Proof.DropHyp <$> hyp ]
+    "flatten"  --> Proof.Flatten <$> hyp <*> list expr <*> list label <*> list label <*> pure () 
+    ]
     where
     infix 0 --> 
     n --> p = P.reserved lex n *> (p <*> pure ())
