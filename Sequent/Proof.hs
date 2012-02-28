@@ -4,6 +4,8 @@ module Sequent.Proof
     ( Proof(..)
     , proofCheck1
     , Checker
+    , Constructor
+    , withConstr
     , Hyp(..)
     , Goal(..)
     )
@@ -36,20 +38,36 @@ data Proof h
 
     -- skolemize and introduce conclusions of a hypothesis into the 
     -- current goal
-    | FlattenHyp Hyp [Expr] [Label] [Label] h
+    | FlattenHyp Hyp [Expr] [Label] [Label] h h
 
     -- drop a hypothesis
     | DropHyp Hyp h
     deriving Show
 
 instance Functor Proof where
-    fmap f Done                        = Done
-    fmap f (Exact h g p)               = Exact h g (f p)
-    fmap f (Instance e hs l p)         = Instance e hs l (f p)
-    fmap f (Witness n e p)             = Witness n e (f p)
-    fmap f (ModusGoal hs l l' p)       = ModusGoal hs l l' (f p)
-    fmap f (FlattenHyp h es ls ls' p)  = FlattenHyp h es ls ls' (f p)
-    fmap f (DropHyp h p)               = DropHyp h (f p)
+    fmap f Done                          = Done
+    fmap f (Exact h g p)                 = Exact h g (f p)
+    fmap f (Instance e hs l p)           = Instance e hs l (f p)
+    fmap f (Witness n e p)               = Witness n e (f p)
+    fmap f (ModusGoal hs l l' p)         = ModusGoal hs l l' (f p)
+    fmap f (FlattenHyp h es ls ls' p p') = FlattenHyp h es ls ls' (f p) (f p')
+    fmap f (DropHyp h p)                 = DropHyp h (f p)
+
+type Constructor a = a -> Proof a
+
+withConstr :: Proof a -> Proof (Constructor a, a)
+withConstr = go
+    where
+    go Done = Done
+    go (Exact h g p) = Exact h g (Exact h g, p)
+    go (Instance e hs l p) = Instance e hs l (Instance e hs l, p)
+    go (Witness n e p) = Witness n e (Witness n e, p)
+    go (ModusGoal hs l l' p) = ModusGoal hs l l' (ModusGoal hs l l', p)
+    go (FlattenHyp h es ls l' p p') = 
+        FlattenHyp h es ls l' (\hole -> FlattenHyp h es ls l' hole p', p)    
+                              (\hole -> FlattenHyp h es ls l' p hole, p')
+    go (DropHyp h p) = DropHyp h (DropHyp h, p)
+
 
 data Program = Program
 
@@ -81,7 +99,7 @@ proofCheck1 (ModusGoal (Hyp b, Hyp b') hlabel glabel ps) (hyp :- con) = do
     let hyp' = groupAddH hlabel (AClause (bhyp' :- bcon)) hyp 
     let con' = groupAddH glabel bx con
     ps (hyp' :- con')
-proofCheck1 (FlattenHyp (Hyp h) es glabels hlabels ps) (hyp :- con) = do
+proofCheck1 (FlattenHyp (Hyp h) es glabels hlabels ps ps') (hyp :- con) = do
     guard $ all (labelFree hyp) hlabels
     guard $ all (labelFree con) glabels
 
@@ -102,7 +120,7 @@ proofCheck1 (FlattenHyp (Hyp h) es glabels hlabels ps) (hyp :- con) = do
     premises <- groupRelabel glabels $ Group [] ((map.fmap) subster hhyp_hs)
     conclusions <- groupRelabel hlabels $ Group [] ((map.fmap) subster hcon_hs')
 
-    ps (groupUnion hyp conclusions :- groupUnion con premises)
+    (liftA2.liftA2) const (ps (hyp :- premises)) (ps' (groupUnion hyp conclusions :- con))
 proofCheck1 (DropHyp (Hyp i) ps) (hyp :- con) = do
     (h, hyp') <- groupExtractH hyp i
     ps (hyp' :- con)

@@ -15,6 +15,7 @@ import Control.Monad (forM_, when, guard)
 import qualified System.Console.Readline as Readline
 
 newtype PfLink r = PfLink (Suspension () (Proof.Proof r))
+    deriving Show
 
 instance Functor PfLink where
     fmap f (PfLink s) = PfLink ((fmap.fmap) f s)
@@ -38,15 +39,30 @@ proofCheck1 :: Proof (Checker f) -> Checker f
 mapConst :: (b -> c) -> Const b a -> Const c a
 mapConst f (Const b) = Const (f b)
 
-proofCheck :: Pf -> Proof.Checker Obligations
-proofCheck c = cata scheck c
-    where
-    scheck :: PfLink (Proof.Checker Obligations) -> Proof.Checker Obligations
-    scheck (PfLink (Suspend ())) c = return $ Const [(c, id)]
-    scheck (PfLink (Normal p)) c = (fmap.mapConst.fmap.fmap.fmap.xform) p (Proof.proofCheck1 p c)
+embedPf :: Proof.Proof Pf -> Pf
+embedPf = Roll . PfLink . Normal 
 
-    xform :: Proof.Proof a -> Pf -> Pf
-    xform p q = Roll . PfLink . Normal $ fmap (const q) p
+proofCheck :: Pf -> Proof.Checker Obligations
+proofCheck c = cxCata scheck c
+    where
+    scheck :: PfLink (Proof.Checker Obligations, Pf) -> Proof.Checker Obligations
+    scheck (PfLink (Suspend ())) c = return $ Const [(c, id)]
+    scheck (PfLink (Normal p)) c = Proof.proofCheck1 p' c
+        where
+        --p :: Proof (Checker Obligations, Pf)
+        --withConstr p :: Proof ((Checker,Pf) -> Proof (Checker,Pf), (Checker,Pf))
+
+        pfConstrs :: Proof.Proof (Pf -> Pf, Proof.Checker Obligations)
+        pfConstrs = fmap t (Proof.withConstr p)
+            where
+            t (f, (checker, _)) = (\pf' -> embedPf (fmap snd (f (checker,pf'))), checker)
+        
+        p' :: Proof.Proof (Proof.Checker Obligations)
+        p' = fmap (\(pff, checker) -> (fmap.fmap.mapConst.fmap.fmap) (pff .) checker) pfConstrs
+
+
+constructor :: Proof.Proof a -> Pf -> Pf
+constructor p q = Roll . PfLink . Normal $ fmap (const q) p
 
 sequent :: String -> IO Environment
 sequent s = do
@@ -86,7 +102,7 @@ parseProof = (,) <$> (fromIntegral <$> P.natural lex) <*> P.choice [
     "instance" --> Proof.Instance <$> expr <*> ((,) <$> hyp <*> label) <*> label,
     "witness"  --> Proof.Witness <$> label <*> expr,
     "modus"    --> Proof.ModusGoal <$> ((,) <$> hyp <*> hyp) <*> label <*> label,
-    "flatten"  --> Proof.FlattenHyp <$> hyp <*> list expr <*> list label <*> list label,
+    "flatten"  --> Proof.FlattenHyp <$> hyp <*> list expr <*> list label <*> list label <*> pure (),
     "drop"     --> Proof.DropHyp <$> hyp ]
     where
     infix 0 --> 
@@ -107,7 +123,7 @@ display env =
         putStrLn $ show i ++ "::\n" ++ indent "  " (showClauseV c)
 
 tactic :: Proof.Proof () -> Pf
-tactic = Roll . PfLink . Normal . fmap (const . Roll . PfLink $ Suspend ())
+tactic p = constructor p . Roll . PfLink $ Suspend ()
 
 applyProof :: Int -> Pf -> Environment -> Maybe Environment
 applyProof i pf env = do
