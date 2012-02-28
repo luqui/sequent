@@ -6,6 +6,7 @@ module Sequent.Proof
     , Checker
     , Constructor
     , withConstr
+    , ErrMsg
     , Hyp(..)
     , Goal(..)
     )
@@ -16,6 +17,7 @@ import Control.Monad (guard)
 import Data.Maybe (isNothing)
 import Control.Arrow (second)
 import Sequent.Syntax
+import Control.Monad.Error
 
 newtype Hyp  = Hyp Label  deriving Show
 newtype Goal = Goal Label deriving Show
@@ -68,46 +70,57 @@ withConstr = go
                               (\hole -> FlattenHyp h es ls l' p hole, p')
     go (DropHyp h p) = DropHyp h (DropHyp h, p)
 
+type ErrMsg = String
 
 data Program = Program
 
-type Checker f = Clause -> Maybe (f Program)
+type Checker f = Clause -> Either ErrMsg (f Program)
+
+infix 0 //
+(//) :: Bool -> String -> Either ErrMsg ()
+True  // _   = return ()
+False // msg = Left msg
+
+infix 0 <//
+(<//) :: Maybe a -> String -> Either ErrMsg a
+Just x  <// msg = return x
+Nothing <// msg = Left msg
 
 proofCheck1 :: (Applicative f) => Proof (Checker f) -> Checker f
 proofCheck1 Done (_ :- con) = do
-    guard $ groupNull con
+    groupNull con // "There are unproved obligations"
     return $ pure Program
 proofCheck1 (Exact (Hyp hl) (Goal gl) ps) (hyp :- con) = do
-    (g,con') <- groupExtractH con gl
-    h <- groupFindH hyp hl
-    guard $ g == h
+    (g,con') <- groupExtractH con gl <// "There is no such label " ++ gl
+    h <- groupFindH hyp hl <// "There is no such label " ++ hl
+    g == h   // "The terms do not match"
     ps (hyp :- con')
 proofCheck1 (Instance ax (Hyp b, n) zlabel ps) (hyp :- con) = do
-    guard $ labelFree hyp zlabel
-    AClause (bhyp :- bcon) <- groupFindH hyp b
-    bhyp' <- groupUnVar n bhyp
+    labelFree hyp zlabel // zlabel ++ " is already used in the hypotheses"
+    AClause (bhyp :- bcon) <- groupFindH hyp b <// "There is no such label " ++ b
+    bhyp' <- groupUnVar n bhyp <// "There is no such variable " ++ n
     let newhyp = AClause (groupSubst n ax bhyp' :- groupSubst n ax bcon)
     ps (groupAddH zlabel newhyp hyp :- con)
 proofCheck1 (Witness n e ps) (hyp :- con) = do
-    con' <- groupUnVar n con
+    con' <- groupUnVar n con <// "There is no such variable " ++ n
     ps (hyp :- groupSubst n e con')
 proofCheck1 (ModusGoal (Hyp b, Hyp b') hlabel glabel ps) (hyp :- con) = do
-    guard $ labelFree hyp hlabel
-    guard $ labelFree con glabel
-    AClause (bhyp :- bcon) <- groupFindH hyp b
-    (bx, bhyp') <- groupExtractH bhyp b'
+    labelFree hyp hlabel // hlabel ++ " is already used in the hypotheses"
+    labelFree con glabel // glabel ++ " is already used in the goals"
+    AClause (bhyp :- bcon) <- groupFindH hyp b <// "There is no such label " ++ b
+    (bx, bhyp') <- groupExtractH bhyp b' <// "There is no such label " ++ b'
     let hyp' = groupAddH hlabel (AClause (bhyp' :- bcon)) hyp 
     let con' = groupAddH glabel bx con
     ps (hyp' :- con')
 proofCheck1 (FlattenHyp (Hyp h) es glabels hlabels ps ps') (hyp :- con) = do
-    guard $ all (labelFree hyp) hlabels
-    guard $ all (labelFree con) glabels
+    all (labelFree hyp) hlabels // "One of the labels is already used in the hypotheses"
+    all (labelFree con) glabels // "One of the labels is already used in the goals"
 
-    AClause (hhyp :- hcon) <- groupFindH hyp h
+    AClause (hhyp :- hcon) <- groupFindH hyp h <// "There is no such label " ++ h
     
     -- find the list of hypotheses and what they should be substituted for
     let Group hhyp_vs hhyp_hs = hhyp
-    guard $ length hhyp_vs == length es
+    length hhyp_vs == length es // "There must be the same number of variables and instantiators"
     let substs = zip hhyp_vs es
     
     -- name the conclusions as skolem functions of the hypotheses
@@ -117,12 +130,12 @@ proofCheck1 (FlattenHyp (Hyp h) es glabels hlabels ps ps') (hyp :- con) = do
     let subster h = foldr (uncurry subst) h substs
     
     -- relabel and put into main context
-    premises <- groupRelabel glabels $ Group [] ((map.fmap) subster hhyp_hs)
-    conclusions <- groupRelabel hlabels $ Group [] ((map.fmap) subster hcon_hs')
+    premises <- groupRelabel glabels (Group [] ((map.fmap) subster hhyp_hs)) <// "Relabeling failed"
+    conclusions <- groupRelabel hlabels (Group [] ((map.fmap) subster hcon_hs')) <// "Relabeling failed"
 
     (liftA2.liftA2) const (ps (hyp :- premises)) (ps' (groupUnion hyp conclusions :- con))
 proofCheck1 (DropHyp (Hyp i) ps) (hyp :- con) = do
-    (h, hyp') <- groupExtractH hyp i
+    (h, hyp') <- groupExtractH hyp i <// "There is no such label " ++ i
     ps (hyp' :- con)
 
 skolemizeGroup :: Label -> [Name] -> Group -> Group

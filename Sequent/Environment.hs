@@ -83,8 +83,8 @@ interactive = go
                     Left err -> print err >> go env
                     Right (n,proof) -> 
                         case applyProof n (tactic proof) env of
-                            Nothing -> putStrLn "Proof error" >> go env
-                            Just env'
+                            Left err  -> putStrLn ("Proof error: " ++ err) >> go env
+                            Right env'
                                 | null (goals env') -> do
                                     putStrLn "Definition complete"
                                     return env
@@ -125,7 +125,7 @@ display env =
 tactic :: Proof.Proof () -> Pf
 tactic p = constructor p . Roll . PfLink $ Suspend ()
 
-applyProof :: Int -> Pf -> Environment -> Maybe Environment
+applyProof :: Int -> Pf -> Environment -> Either Proof.ErrMsg Environment
 applyProof i pf env = do
     let conts = goals env
     guard $ i < length conts

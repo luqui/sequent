@@ -10,6 +10,7 @@ import qualified Text.Parsec as P
 import qualified Text.Parsec.Token as P
 import qualified Text.Parsec.Language as P
 import Sequent.Syntax
+import Control.Monad.Error
 
 type Parser = P.Parsec String ()
 
