@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 module Sequent.Parser where
 
 import Prelude hiding (lex)
@@ -16,6 +18,13 @@ parse p = P.parse p "<input>"
 
 lex = P.makeTokenParser P.haskellDef
 
+clauseElem :: Parser (Either Name (Maybe Label, ClauseAtom))
+clauseElem = idful <|> ((Right . (Nothing,)) <$>  clauseAtom)
+    where
+    idful = convert <$> P.identifier lex <*> P.optionMaybe (P.symbol lex ":" *> clauseAtom)
+    convert n Nothing = Left n
+    convert n (Just a) = Right (Just n, a)
+
 clauseAtom :: Parser ClauseAtom
 clauseAtom = P.choice [ rel, cls ] 
     where
@@ -33,15 +42,13 @@ clauseAtom = P.choice [ rel, cls ]
     cls = AClause <$> P.parens lex clause
 
 group :: Parser Group
-group = engroup <$> P.many atom
+group = engroup <$> P.many clauseElem
     where
-    atom = P.choice [
-        Left <$> P.identifier lex,
-        Right <$> clauseAtom ]
     engroup xs = 
         let (vs,hs) = partitionEithers xs in
         Group vs (zipWith label [0..] hs)
-    label n h = ("H" ++ show n, h)
+    label n (Nothing, h) = ("H" ++ show n, h)
+    label n (Just l, h) = (l, h)
 
 clause :: Parser Clause
 clause = (:-) <$> group <* P.symbol lex "->" <*> group
@@ -50,8 +57,8 @@ expr :: Parser Expr
 expr = atomExpr
 
 atomExpr :: Parser Expr
-atomExpr = P.choice [
-        VarExpr <$> P.identifier lex,
-        ApplyExpr <$> P.parens lex (P.many1 atomExpr)
-    ]
-
+atomExpr = convert <$> P.identifier lex <*> P.optionMaybe (P.parens lex argList)
+    where
+    argList = expr `P.sepBy` P.symbol lex ","
+    convert n Nothing = VarExpr n
+    convert n (Just es) = SkolemExpr n es

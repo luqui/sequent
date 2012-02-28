@@ -28,22 +28,19 @@ instance Show Clause where
 
 data Expr
     = VarExpr Name
-    | ApplyExpr [Expr]
+    | SkolemExpr Label [Expr]
     deriving Eq
 
 instance Show Expr where
-    show = showExpr True
+    show = showExpr
 
 showAtom :: ClauseAtom -> String
-showAtom (ARel n xs) = showRel n (map (showExpr True) xs)
+showAtom (ARel n xs) = showRel n (map showExpr xs)
 showAtom (AClause c) = "(" ++ showClause c ++ ")"
 
-showExpr :: Bool -> Expr -> String
-showExpr parens (VarExpr n) = n
-showExpr parens (ApplyExpr es) = p $ unwords (map (showExpr True) es)
-    where
-    p x | parens = "(" ++ x ++ ")"
-        | otherwise = x
+showExpr :: Expr -> String
+showExpr (VarExpr n) = n
+showExpr (SkolemExpr l es) = l ++ "(" ++ intercalate "," (map showExpr es) ++ ")"
 
 showRel :: RelName -> [String] -> String
 showRel = \name args -> "[" ++ intercalate " " (atoms name args) ++ "]"
@@ -121,8 +118,8 @@ substExpr :: Name -> Expr -> Expr -> Expr
 substExpr n e (VarExpr n')
     | n == n' = e
     | otherwise = VarExpr n'
-substExpr n e (ApplyExpr es)
-    = ApplyExpr (map (substExpr n e) es)
+substExpr n e (SkolemExpr l es)
+    = SkolemExpr l (map (substExpr n e) es)
 
 dismember :: (Eq a) => [(a,b)] -> a -> Maybe (b,[(a,b)])
 dismember [] x' = Nothing
