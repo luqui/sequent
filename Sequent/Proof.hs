@@ -34,22 +34,22 @@ data Proof h
     -- modus ponens to introduce a goal for a hypothesis's hypothesis
     | ModusGoal (Hyp,Hyp) Label Label h
 
-    -- introduce the conclusions of a assumption-free hypothesis into
-    -- the current goal
-    | FlattenHyp Hyp [Label] h
+    -- skolemize and introduce conclusions of a hypothesis into the 
+    -- current goal
+    | FlattenHyp Hyp [Expr] [Label] [Label] h
 
     -- drop a hypothesis
     | DropHyp Hyp h
     deriving Show
 
 instance Functor Proof where
-    fmap f Done                  = Done
-    fmap f (Exact h g p)         = Exact h g (f p)
-    fmap f (Instance e hs l p)   = Instance e hs l (f p)
-    fmap f (Witness n e p)       = Witness n e (f p)
-    fmap f (ModusGoal hs l l' p) = ModusGoal hs l l' (f p)
-    fmap f (FlattenHyp h ls p)   = FlattenHyp h ls (f p)
-    fmap f (DropHyp h p)         = DropHyp h (f p)
+    fmap f Done                        = Done
+    fmap f (Exact h g p)               = Exact h g (f p)
+    fmap f (Instance e hs l p)         = Instance e hs l (f p)
+    fmap f (Witness n e p)             = Witness n e (f p)
+    fmap f (ModusGoal hs l l' p)       = ModusGoal hs l l' (f p)
+    fmap f (FlattenHyp h es ls ls' p)  = FlattenHyp h es ls ls' (f p)
+    fmap f (DropHyp h p)               = DropHyp h (f p)
 
 data Program = Program
 
@@ -81,14 +81,34 @@ proofCheck1 (ModusGoal (Hyp b, Hyp b') hlabel glabel ps) (hyp :- con) = do
     let hyp' = groupAddH hlabel (AClause (bhyp' :- bcon)) hyp 
     let con' = groupAddH glabel bx con
     ps (hyp' :- con')
-proofCheck1 (FlattenHyp (Hyp h) labels ps) (hyp :- con) = do
-    guard $ all (labelFree hyp) labels
+proofCheck1 (FlattenHyp (Hyp h) es glabels hlabels ps) (hyp :- con) = do
+    guard $ all (labelFree hyp) hlabels
+    guard $ all (labelFree con) glabels
+
     AClause (hhyp :- hcon) <- groupFindH hyp h
-    guard $ groupNull hhyp
-    hcon' <- groupRelabel labels hcon
-    ps (groupUnion hyp hcon' :- con)
+    
+    -- find the list of hypotheses and what they should be substituted for
+    let Group hhyp_vs hhyp_hs = hhyp
+    guard $ length hhyp_vs == length es
+    let substs = zip hhyp_vs es
+    
+    -- name the conclusions as skolem functions of the hypotheses
+    -- a b -> c d  ==>   a b -> c(a,b) d(a,b)
+    let Group _ hcon_hs' = skolemizeGroup h hhyp_vs hcon
+
+    let subster h = foldr (uncurry subst) h substs
+    
+    -- relabel and put into main context
+    premises <- groupRelabel glabels $ Group [] ((map.fmap) subster hhyp_hs)
+    conclusions <- groupRelabel hlabels $ Group [] ((map.fmap) subster hcon_hs')
+
+    ps (groupUnion hyp conclusions :- groupUnion con premises)
 proofCheck1 (DropHyp (Hyp i) ps) (hyp :- con) = do
     (h, hyp') <- groupExtractH hyp i
     ps (hyp' :- con)
 
-
+skolemizeGroup :: Label -> [Name] -> Group -> Group
+skolemizeGroup label ps (Group vs hs) = Group [] ((map.fmap) substf hs)
+    where 
+    substs = [ subst v (SkolemExpr label (map VarExpr ps) (VarExpr v)) | v <- vs ]
+    substf = foldr (.) id substs 

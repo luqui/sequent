@@ -122,7 +122,7 @@ substExpr n e (SkolemExpr l es v)
     = substSkolem (SkolemExpr l es v)
     where
     substSkolem (VarExpr n) = VarExpr n
-    substSkolem (SkolemExpr n es v) = SkolemExpr n (map (substExpr n e) es) (substSkolem v)
+    substSkolem (SkolemExpr l es v) = SkolemExpr l (map (substExpr n e) es) (substSkolem v)
 
 dismember :: (Eq a) => [(a,b)] -> a -> Maybe (b,[(a,b)])
 dismember [] x' = Nothing

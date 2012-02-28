@@ -86,16 +86,17 @@ parseProof = (,) <$> (fromIntegral <$> P.natural lex) <*> P.choice [
     "instance" --> Proof.Instance <$> expr <*> ((,) <$> hyp <*> label) <*> label,
     "witness"  --> Proof.Witness <$> label <*> expr,
     "modus"    --> Proof.ModusGoal <$> ((,) <$> hyp <*> hyp) <*> label <*> label,
-    "flatten"  --> Proof.FlattenHyp <$> hyp <*> many label,
+    "flatten"  --> Proof.FlattenHyp <$> hyp <*> list expr <*> list label <*> list label,
     "drop"     --> Proof.DropHyp <$> hyp ]
     where
-    lex = Parser.lex
     infix 0 --> 
     n --> p = P.reserved lex n *> (p <*> pure ())
+    lex = Parser.lex
     label = P.identifier lex
     hyp = Proof.Hyp <$> label
     goal = Proof.Goal <$> label
     expr = Parser.expr
+    list p = P.parens lex $ p `P.sepBy` (P.symbol lex ",")
 
 indent :: String -> String -> String
 indent by = unlines . map (by ++) . lines
