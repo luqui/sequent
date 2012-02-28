@@ -57,8 +57,10 @@ expr :: Parser Expr
 expr = atomExpr
 
 atomExpr :: Parser Expr
-atomExpr = convert <$> P.identifier lex <*> P.optionMaybe (P.parens lex argList)
+atomExpr = convert <$> P.identifier lex <*> P.optionMaybe argList
     where
-    argList = expr `P.sepBy` P.symbol lex ","
+    argList = (\es v n -> SkolemExpr n es v)
+                <$> P.parens lex (expr `P.sepBy` P.symbol lex ",") 
+                <*> (P.symbol lex "." *> atomExpr)
     convert n Nothing = VarExpr n
-    convert n (Just es) = SkolemExpr n es
+    convert n (Just f) = f n

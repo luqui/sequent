@@ -28,7 +28,7 @@ instance Show Clause where
 
 data Expr
     = VarExpr Name
-    | SkolemExpr Label [Expr]
+    | SkolemExpr Label [Expr] Expr
     deriving Eq
 
 instance Show Expr where
@@ -40,7 +40,7 @@ showAtom (AClause c) = "(" ++ showClause c ++ ")"
 
 showExpr :: Expr -> String
 showExpr (VarExpr n) = n
-showExpr (SkolemExpr l es) = l ++ "(" ++ intercalate "," (map showExpr es) ++ ")"
+showExpr (SkolemExpr l es v) = l ++ "(" ++ intercalate "," (map showExpr es) ++ ")." ++ showExpr v
 
 showRel :: RelName -> [String] -> String
 showRel = \name args -> "[" ++ intercalate " " (atoms name args) ++ "]"
@@ -118,8 +118,11 @@ substExpr :: Name -> Expr -> Expr -> Expr
 substExpr n e (VarExpr n')
     | n == n' = e
     | otherwise = VarExpr n'
-substExpr n e (SkolemExpr l es)
-    = SkolemExpr l (map (substExpr n e) es)
+substExpr n e (SkolemExpr l es v) 
+    = substSkolem (SkolemExpr l es v)
+    where
+    substSkolem (VarExpr n) = VarExpr n
+    substSkolem (SkolemExpr n es v) = SkolemExpr n (map (substExpr n e) es) (substSkolem v)
 
 dismember :: (Eq a) => [(a,b)] -> a -> Maybe (b,[(a,b)])
 dismember [] x' = Nothing
