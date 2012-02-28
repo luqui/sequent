@@ -145,7 +145,7 @@ Right-nested clauses introduce nested namespaces:
     Foo: (x y -> Bar: (z -> baz))
     ->
     Foo(2,4).Bar(6).baz
-    
+
 When the label is the same as the variable, the member access can be omitted:
 
     gcd: (x y :nat -> gcd :nat)
@@ -157,7 +157,7 @@ This dynamic nests.
     foo: (x -> foo: (y -> foo))
     ->
     foo(x)(y)
-    
+
 When a group has exactly one variable in its consequent, and it is unambiguous (no
 other group has the same variable in its consequent, and the name is used as a
 label), the default name for the hypothesis is the name of that variable.  So
@@ -168,16 +168,16 @@ the following are equivalent:
     gcd: (x y :nat -> gcd :nat) -> [gcd(2,4).gcd = 2]
     gcd: (x y :nat -> gcd :nat) -> [gcd(2,4) = 2]
     (x y :nat -> gcd :nat) -> [gcd(2,4) = 2]
-    
+
 Labels may have "import statements", introducing names into the surrounding scope.
 
     Divide(r): (x y :nat -> q r :nat [x = q*y+r]) -> [r(x,y) = 0]
     Divide(*): (x y :nat -> q r :nat [x = q*y+r]) -> [r(x,y) = 0]
 
 And the label may be omitted if an import statement is given:
-    
+
     (*): (x y :nat -> q r :nat [x = q*y+r]) -> [r(x,y) = 0]
-    
+
 This is only possible when it would not cause ambiguities.
 
 When a labeled clause is used, its assumptions are introduces as obligations and
@@ -186,7 +186,7 @@ all the knowledge in its consequents are introduced as hypotheses.  This stateme
     gcd (x y :nat -> gcd :nat)
     ->
     [gcd(2,4) = 2]
-    
+
 has the implicit proof state
 
     gcd (x y :nat -> gcd :nat)
@@ -207,7 +207,7 @@ placing them in backticks:
 
     gcd(2,4)
     2 `gcd` 4
-    
+
 and operators can be namified by placing them in parentheses:
 
     x * y
@@ -217,11 +217,11 @@ In such a way, hypotheses can be named after operators as well, so you
 could assume a multiplication operator like so:
 
     (*): (x y :nat -> (*) :nat)
-    
+ 
 Which is equivalent to:
 
     (x y :nat -> (*) :nat)
-    
+
 The prime character `'` is both a valid identifier and operator character, and
 neither may lead with it.
 
@@ -309,7 +309,7 @@ their programs.  A full signature represents exactly the reasoning that took
 place in the proof/program, so it includes all of its assumptions.  However,
 many useful functions depend on large theories.  So a database entry is
 a signature paired with an environment, where an environment is a mapping
-from names to other entries.  
+from names to other entries. 
 
 So when you import something from the database, it comes linked with a concrete
 environment which enters the environment of what you are working on. 
@@ -322,7 +322,7 @@ For example, let's say we defined a library for unary naturals.
         zero :nat
         (x :nat -> succ :nat)
     )
-    
+
 Someone else wants to define some nice utilities like addition and multiplication.
 To do so, he imports this library as `Nat`, giving him the context:
 
