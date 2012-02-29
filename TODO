@@ -1,5 +1,4 @@
 * Decide on syntax for nested clauses
-* Skolem functions
 * Discharge by documentation
 * Generate programs
 * Decide on/refine syntax for relations
@@ -7,7 +6,3 @@
 * Define tactic language
 * Switch UI to javascript
 * Names and module/search system
-
-
-Done
-====
