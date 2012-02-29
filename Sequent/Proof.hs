@@ -3,6 +3,7 @@
 module Sequent.Proof 
     ( Proof(..)
     , proofCheck1
+    , initProgram
     , Checker
     , Constructor
     , withConstr

@@ -94,7 +94,8 @@ interactive = go
                                     putStrLn "Definition complete"
                                     Just pf' <- return $ extractProof pf
                                     print pf'
-                                    Ok prog <- return $ genProgram pf' (clause env)
+                                    Ok prog <- return $ Proof.initProgram (clause env) 
+                                                            <$> genProgram pf' (clause env)
                                     putStrLn "----- JS -----"
                                     putStrLn $ Program.toJS prog
                                     return env
