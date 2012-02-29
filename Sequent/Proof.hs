@@ -6,7 +6,6 @@ module Sequent.Proof
     , Checker
     , Constructor
     , withConstr
-    , ErrMsg
     , Hyp(..)
     , Goal(..)
     )
@@ -17,7 +16,7 @@ import Control.Monad (guard)
 import Data.Maybe (isNothing)
 import Control.Arrow (second)
 import Sequent.Syntax
-import Control.Monad.Error
+import Sequent.Fixpoint
 
 newtype Hyp  = Hyp Label  deriving Show
 newtype Goal = Goal Label deriving Show
@@ -55,21 +54,19 @@ withConstr = go
         Flatten h es ls l' (\hole -> Flatten h es ls l' hole p', p)    
                            (\hole -> Flatten h es ls l' p hole, p')
 
-type ErrMsg = String
-
 data Program = Program
 
-type Checker f = Clause -> Either ErrMsg (f Program)
+type Checker f = Clause -> Error (f Program)
 
 infix 0 //
-(//) :: Bool -> String -> Either ErrMsg ()
+(//) :: Bool -> String -> Error ()
 True  // _   = return ()
-False // msg = Left msg
+False // msg = fail msg
 
 infix 0 <//
-(<//) :: Maybe a -> String -> Either ErrMsg a
+(<//) :: Maybe a -> String -> Error a
 Just x  <// msg = return x
-Nothing <// msg = Left msg
+Nothing <// msg = fail msg
 
 proofCheck1 :: (Applicative f) => Proof (Checker f) -> Checker f
 proofCheck1 Done (_ :- con) = do

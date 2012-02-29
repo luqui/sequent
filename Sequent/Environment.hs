@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeOperators #-}
 
 module Sequent.Environment where
 
@@ -14,12 +14,7 @@ import Control.Applicative
 import Control.Monad (forM_, when, guard)
 import qualified System.Console.Readline as Readline
 
-newtype PfLink r = PfLink (Suspension () (Proof.Proof r))
-    deriving Show
-
-instance Functor PfLink where
-    fmap f (PfLink s) = PfLink ((fmap.fmap) f s)
-
+type PfLink = Suspension () :. Proof.Proof
 type Pf = Mu PfLink
 
 data Environment = Environment {
@@ -40,14 +35,14 @@ mapConst :: (b -> c) -> Const b a -> Const c a
 mapConst f (Const b) = Const (f b)
 
 embedPf :: Proof.Proof Pf -> Pf
-embedPf = Roll . PfLink . Normal 
+embedPf = Roll . O . Normal 
 
 proofCheck :: Pf -> Proof.Checker Obligations
 proofCheck c = cxCata scheck c
     where
     scheck :: PfLink (Proof.Checker Obligations, Pf) -> Proof.Checker Obligations
-    scheck (PfLink (Suspend ())) c = return $ Const [(c, id)]
-    scheck (PfLink (Normal p)) c = Proof.proofCheck1 p' c
+    scheck (O (Suspend ())) c = return $ Const [(c, id)]
+    scheck (O (Normal p)) c = Proof.proofCheck1 p' c
         where
         --p :: Proof (Checker Obligations, Pf)
         --withConstr p :: Proof ((Checker,Pf) -> Proof (Checker,Pf), (Checker,Pf))
@@ -62,7 +57,7 @@ proofCheck c = cxCata scheck c
 
 
 constructor :: Proof.Proof a -> Pf -> Pf
-constructor p q = Roll . PfLink . Normal $ fmap (const q) p
+constructor p q = Roll . O . Normal $ fmap (const q) p
 
 sequent :: String -> IO Environment
 sequent s = do
@@ -83,8 +78,8 @@ interactive = go
                     Left err -> print err >> go env
                     Right (n,proof) -> 
                         case applyProof n (tactic proof) env of
-                            Left err  -> putStrLn ("Proof error: " ++ err) >> go env
-                            Right env'
+                            Error err  -> putStrLn ("Proof error: " ++ err) >> go env
+                            Ok env'
                                 | null (goals env') -> do
                                     putStrLn "Definition complete"
                                     return env
@@ -121,9 +116,9 @@ display env =
         putStrLn $ show i ++ "::\n" ++ indent "  " (showClauseV c)
 
 tactic :: Proof.Proof () -> Pf
-tactic p = constructor p . Roll . PfLink $ Suspend ()
+tactic p = constructor p . Roll . O $ Suspend ()
 
-applyProof :: Int -> Pf -> Environment -> Either Proof.ErrMsg Environment
+applyProof :: Int -> Pf -> Environment -> Error Environment
 applyProof i pf env = do
     let conts = goals env
     guard $ i < length conts
