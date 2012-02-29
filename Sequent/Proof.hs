@@ -20,7 +20,8 @@ import Data.Traversable (Traversable(sequenceA))
 import Data.Foldable (Foldable(foldMap))
 import Data.Monoid (Monoid(..))
 import Sequent.Fixpoint
-import qualified Sequent.Program
+import qualified Sequent.Program as Program
+import Data.List (intercalate)
 
 newtype Hyp  = Hyp Label  deriving Show
 newtype Goal = Goal Label deriving Show
@@ -83,7 +84,7 @@ Just x  <// msg = return x
 Nothing <// msg = fail msg
 
 initProgram :: Clause -> Program.Program -> Program.Program
-initProgram (Group vars hyps :- _) c = Program.Init hyps'
+initProgram (Group vars hyps :- _) = Program.Init hyps'
     where
     hyps' = vars ++ map fst hyps
 
@@ -125,18 +126,20 @@ proofCheck1 (Flatten (Hyp h) es glabels hlabels ps ps') (hyp :- con) = do
     premises <- groupRelabel glabels (Group [] ((map.fmap) subster hhyp_hs)) <// "Relabeling failed"
     conclusions <- groupRelabel hlabels (Group [] ((map.fmap) subster hcon_hs')) <// "Relabeling failed"
 
+    let Group hcon_vs hcon_hs = hcon
+
     let goalmap = zip (map fst hcon_hs') hlabels ++
                   zip hcon_vs (map convP (skolemize h es hcon_vs))
 
-    let consprog p p' = Program.Apply h p (zip glabels hhyps_hs) 
-                                        p' (zip hhyps_vs (map convP es))
+    let consprog p p' = Program.Apply h p (zip glabels (map fst hhyp_hs))
+                                        p' (zip hhyp_vs (map convP es))
                                            goalmap
 
     (liftA2.liftA2) consprog 
                     (ps (hyp :- premises)) (ps' (groupUnion hyp conclusions :- con))
 
 skolemize :: Label -> [Expr] -> [Name] -> [Expr]
-skolemize l args vs = [ SkolemExpr l args (VarExpr r) | r <- rs ]
+skolemize l args vs = [ SkolemExpr l args (VarExpr v) | v <- vs ]
 
 skolemizeGroup :: Label -> [Name] -> Group -> Group
 skolemizeGroup label ps (Group vs hs) = Group [] ((map.fmap) substf hs)
