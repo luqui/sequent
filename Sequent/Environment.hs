@@ -37,6 +37,12 @@ mapConst f (Const b) = Const (f b)
 embedPf :: Proof.Proof Pf -> Pf
 embedPf = Roll . O . Normal 
 
+extractProof :: Pf -> Maybe (Mu Proof.Proof)
+extractProof pf =
+    case sequenceMu pf of
+        Suspend _ -> Nothing
+        Normal x -> Just x
+
 proofCheck :: Pf -> Proof.Checker Obligations
 proofCheck c = cxCata scheck c
     where

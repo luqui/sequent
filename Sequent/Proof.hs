@@ -16,6 +16,9 @@ import Control.Monad (guard)
 import Data.Maybe (isNothing)
 import Control.Arrow (second)
 import Sequent.Syntax
+import Data.Traversable (Traversable(sequenceA))
+import Data.Foldable (Foldable(foldMap))
+import Data.Monoid (Monoid(..))
 import Sequent.Fixpoint
 
 newtype Hyp  = Hyp Label  deriving Show
@@ -41,6 +44,18 @@ instance Functor Proof where
     fmap f (Exact h g p)              = Exact h g (f p)
     fmap f (Witness n e p)            = Witness n e (f p)
     fmap f (Flatten h es ls ls' p p') = Flatten h es ls ls' (f p) (f p')
+
+instance Foldable Proof where
+    foldMap f Done = mempty
+    foldMap f (Exact _ _ x) = f x
+    foldMap f (Witness _ _ x) = f x
+    foldMap f (Flatten _ _ _ _ x x') = f x `mappend` f x'
+
+instance Traversable Proof where
+    sequenceA Done = pure Done
+    sequenceA (Exact h g x) = Exact h g <$> x
+    sequenceA (Witness n e x) = Witness n e <$> x
+    sequenceA (Flatten h es l l' x x') = Flatten h es l l' <$> x <*> x'
 
 type Constructor a = a -> Proof a
 
