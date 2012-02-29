@@ -20,6 +20,7 @@ import Data.Traversable (Traversable(sequenceA))
 import Data.Foldable (Foldable(foldMap))
 import Data.Monoid (Monoid(..))
 import Sequent.Fixpoint
+import qualified Sequent.Program
 
 newtype Hyp  = Hyp Label  deriving Show
 newtype Goal = Goal Label deriving Show
@@ -69,9 +70,7 @@ withConstr = go
         Flatten h es ls l' (\hole -> Flatten h es ls l' hole p', p)    
                            (\hole -> Flatten h es ls l' p hole, p')
 
-data Program = Program
-
-type Checker f = Clause -> Error (f Program)
+type Checker f = Clause -> Error (f Program.Program)
 
 infix 0 //
 (//) :: Bool -> String -> Error ()
@@ -83,18 +82,28 @@ infix 0 <//
 Just x  <// msg = return x
 Nothing <// msg = fail msg
 
+initProgram :: Clause -> Program.Program -> Program.Program
+initProgram (Group vars hyps :- _) c = Program.Init hyps'
+    where
+    hyps' = vars ++ map fst hyps
+
+convP :: Expr -> String
+convP (VarExpr n) = n
+convP (SkolemExpr n es v) = 
+    concat [n, "(", intercalate "," (map convP es), ").", convP v]
+
 proofCheck1 :: (Applicative f) => Proof (Checker f) -> Checker f
 proofCheck1 Done (_ :- con) = do
     groupNull con // "There are unproved obligations"
-    return $ pure Program
+    (pure.pure) Program.Return
 proofCheck1 (Exact (Hyp hl) (Goal gl) ps) (hyp :- con) = do
     (g,con') <- groupExtractH con gl <// "There is no such label " ++ gl
     h <- groupFindH hyp hl <// "There is no such label " ++ hl
     g == h   // "The terms do not match"
-    ps (hyp :- con')
+    (fmap.fmap) (Program.SetResult gl hl) (ps (hyp :- con'))
 proofCheck1 (Witness n e ps) (hyp :- con) = do
     con' <- groupUnVar n con <// "There is no such variable " ++ n
-    ps (hyp :- groupSubst n e con')
+    (fmap.fmap) (Program.SetResult n (convP e)) (ps (hyp :- groupSubst n e con'))
 proofCheck1 (Flatten (Hyp h) es glabels hlabels ps ps') (hyp :- con) = do
     all (labelFree hyp) hlabels // "One of the labels is already used in the hypotheses"
     all (labelFree con) glabels // "One of the labels is already used in the goals"
@@ -116,7 +125,18 @@ proofCheck1 (Flatten (Hyp h) es glabels hlabels ps ps') (hyp :- con) = do
     premises <- groupRelabel glabels (Group [] ((map.fmap) subster hhyp_hs)) <// "Relabeling failed"
     conclusions <- groupRelabel hlabels (Group [] ((map.fmap) subster hcon_hs')) <// "Relabeling failed"
 
-    (liftA2.liftA2) const (ps (hyp :- premises)) (ps' (groupUnion hyp conclusions :- con))
+    let goalmap = zip (map fst hcon_hs') hlabels ++
+                  zip hcon_vs (map convP (skolemize h es hcon_vs))
+
+    let consprog p p' = Program.Apply h p (zip glabels hhyps_hs) 
+                                        p' (zip hhyps_vs (map convP es))
+                                           goalmap
+
+    (liftA2.liftA2) consprog 
+                    (ps (hyp :- premises)) (ps' (groupUnion hyp conclusions :- con))
+
+skolemize :: Label -> [Expr] -> [Name] -> [Expr]
+skolemize l args vs = [ SkolemExpr l args (VarExpr r) | r <- rs ]
 
 skolemizeGroup :: Label -> [Name] -> Group -> Group
 skolemizeGroup label ps (Group vs hs) = Group [] ((map.fmap) substf hs)
