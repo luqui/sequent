@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, TypeOperators #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeOperators, TupleSections #-}
 
 module Sequent.Environment where
 
@@ -85,9 +85,10 @@ interactive = go
                     Right (n,proof) -> 
                         case applyProof n (tactic proof) env of
                             Error err  -> putStrLn ("Proof error: " ++ err) >> go env
-                            Ok env'
+                            Ok (env',pf)
                                 | null (goals env') -> do
                                     putStrLn "Definition complete"
+                                    print $ extractProof pf
                                     return env
                                 | otherwise         -> go env'
 
@@ -124,9 +125,9 @@ display env =
 tactic :: Proof.Proof () -> Pf
 tactic p = constructor p . Roll . O $ Suspend ()
 
-applyProof :: Int -> Pf -> Environment -> Error Environment
+applyProof :: Int -> Pf -> Environment -> Error (Environment, Pf)
 applyProof i pf env = do
     let conts = goals env
     guard $ i < length conts
     let pf' = snd (conts !! i) pf
-    Environment (clause env) . getConst <$> proofCheck pf' (clause env)
+    (,pf') . Environment (clause env) . getConst <$> proofCheck pf' (clause env)
