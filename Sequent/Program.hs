@@ -44,7 +44,7 @@ toJS (Apply f helper helpermap p vars goalmap) =
     where
     fapply = 
         quoteJS f ++ "(_adapt(" ++ toJS (Init [] helper) ++ "(), " 
-                  ++ adapter helpermap
+                  ++ adapter helpermap ++ ", "
                   ++ object vars ++ "))"
-    adapter xs = " {" ++ intercalate ", " [ quoteJS k ++ ": '" ++ quoteJS v ++ "'" | (k,v) <- xs ]
-    object xs = "{ " ++ intercalate ", " [ quoteJS k ++ ": " ++ quoteJS v | (k,v) <- xs ]
+    adapter xs = "{ " ++ intercalate ", " [ quoteJS k ++ ": '" ++ quoteJS v ++ "'" | (k,v) <- xs ] ++ " }"
+    object xs = "{ " ++ intercalate ", " [ quoteJS k ++ ": " ++ quoteJS v | (k,v) <- xs ] ++ " }"
