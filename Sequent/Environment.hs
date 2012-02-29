@@ -12,7 +12,9 @@ import Sequent.Fixpoint
 import Data.IORef
 import Control.Applicative
 import Control.Monad (forM_, when, guard)
+import Control.Monad.Identity
 import qualified System.Console.Readline as Readline
+import qualified Sequent.Program as Program
 
 type PfLink = Suspension () :. Proof.Proof
 type Pf = Mu PfLink
@@ -43,6 +45,9 @@ extractProof pf =
         Suspend _ -> Nothing
         Normal x -> Just x
 
+genProgram :: Mu Proof.Proof -> Clause -> Error Program.Program
+genProgram = (fmap.fmap) runIdentity . cata Proof.proofCheck1
+
 proofCheck :: Pf -> Proof.Checker Obligations
 proofCheck c = cxCata scheck c
     where
@@ -60,7 +65,6 @@ proofCheck c = cxCata scheck c
         
         p' :: Proof.Proof (Proof.Checker Obligations)
         p' = fmap (\(pff, checker) -> (fmap.fmap.mapConst.fmap.fmap) (pff .) checker) pfConstrs
-
 
 constructor :: Proof.Proof a -> Pf -> Pf
 constructor p q = Roll . O . Normal $ fmap (const q) p
@@ -88,7 +92,11 @@ interactive = go
                             Ok (env',pf)
                                 | null (goals env') -> do
                                     putStrLn "Definition complete"
-                                    print $ extractProof pf
+                                    Just pf' <- return $ extractProof pf
+                                    print pf'
+                                    Ok prog <- return $ genProgram pf' (clause env)
+                                    putStrLn "----- JS -----"
+                                    putStrLn $ Program.toJS prog
                                     return env
                                 | otherwise         -> go env'
 
