@@ -75,24 +75,28 @@ sequent s = do
         Left err -> fail $ show err
         Right cl -> interactive (Environment cl [(cl, id)])
 
+eraseDisplay = putStrLn "\27[2J"
+
 interactive :: Environment -> IO Environment
-interactive = go []
+interactive = go "" []
     where
-    go history env = do
+    go msg history env = do
+        eraseDisplay
+        putStrLn msg
         display env
         maybeLine <- readline
         case maybeLine of
             Nothing -> return env
             Just "undo" -> do
                 case history of
-                    [] -> putStrLn "Nothing was done to undo" >> go history env
-                    (x:xs) -> go xs x
+                    [] -> go "Nothing was done to undo" history env
+                    (x:xs) -> go "" xs x
             Just line -> do
                 case P.parse parseProof "<input>" line of
-                    Left err -> print err >> go history env
+                    Left err -> go (show err) history env
                     Right (n,proof) -> 
                         case applyProof n (tactic proof) env of
-                            Error err  -> putStrLn ("Proof error: " ++ err) >> go history env
+                            Error err  -> go ("Proof error: " ++ err) history env
                             Ok (env',pf)
                                 | null (goals env') -> do
                                     putStrLn "Definition complete"
@@ -103,7 +107,7 @@ interactive = go []
                                     putStrLn "----- JS -----"
                                     putStrLn $ Program.toJS prog
                                     return env
-                                | otherwise         -> go (env:history) env'
+                                | otherwise         -> go "" (env:history) env'
 
 readline = do
     mline <- Readline.readline "> "
@@ -133,8 +137,7 @@ indent :: String -> String -> String
 indent by = unlines . map (by ++) . lines
  
 display :: Environment -> IO ()
-display env = do
-    putStr "\27[2J"  -- erase display
+display env =
     putStrLn . PP.render $
         PP.vcat [ PP.text (show i ++ "::") PP.$+$ (PP.nest 2 (showClauseV c)) | (i,(c,_)) <- zip [0..] (goals env) ]
 
