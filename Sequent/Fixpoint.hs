@@ -6,6 +6,7 @@ import Prelude hiding (sequence)
 import Control.Monad (liftM, ap, MonadPlus(..))
 import Control.Applicative
 import Control.Arrow
+import Control.Monad.Identity (Identity)
 import Data.Traversable
 
 newtype (f :. g) x = O { unO :: f (g x) }
@@ -73,5 +74,9 @@ instance Monad (Suspension a) where
     Normal x  >>= f = f x
 
 instance Applicative (Suspension a) where
+    pure = return
+    (<*>) = ap
+
+instance Applicative Identity where
     pure = return
     (<*>) = ap

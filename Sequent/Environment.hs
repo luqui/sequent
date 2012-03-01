@@ -26,7 +26,6 @@ data Environment = Environment {
 
 type Obligations = Const [(Clause, Pf -> Pf)]
 
-
 {-
 type Checker f = Clause -> Maybe (f Program)
 proofCheck1 :: Proof (Checker f) -> Checker f
