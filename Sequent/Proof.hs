@@ -152,6 +152,11 @@ proofCheck1 (Intro (Goal gl) hvars hlabels ps ps') (hyp :- con) = do
     (AClause (ghyp :- gcon), con') <- groupExtractH con gl <// "No such goal " ++ gl
     ghyp' <- groupRevar hvars =<< groupRelabel hlabels ghyp <// "Relabeling failed"
     
+    length (groupVars ghyp) == length hvars   // "Wrong number of variables"
+    length (groupHyps ghyp) == length hlabels // "Wrong number of labels"
+
+    all (labelFree hyp) hlabels // "One of the given labels is already used"
+
     let inputs = groupVars ghyp ++ map fst (groupHyps ghyp)
     let innards = hvars ++ hlabels
 
