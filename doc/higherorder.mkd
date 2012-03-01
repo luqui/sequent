@@ -1,0 +1,76 @@
+It seems impossible to encode `or` given the present system, which is small and
+easy, and adding `or` to the core calculus would complicate things.  Also I see
+the ability to encode `or` as evidence of the modeling power of the system -- if
+we can't encode `or` without it, what can't we encode with it?
+
+However, I must remember not to get swept away by comfortable thinking.  Higher
+types provide nice *functional* modeling power, but this language seems to be
+developing in its own direction, and I would like to let it do so and develop
+its own way of expression than trying to cram type theory and functional
+programming into it.
+
+What if higher types can already be encoded?
+
+Define a two-relation `[x : T]`, meaning `x` is of type `T`, alternatively x is
+an element of `T`.  Then the classical type theoretic encoding is
+
+    X \/ Y = (Z:*) -> (X -> Z) -> (Y -> Z) -> Z
+
+To emulate this, we can just make our own little set theory
+
+    X Y x [x:X] -> [x : or(X,Y)]
+    X Y y [y:Y] -> [y : or(X,Y)]
+    X Y Z (x [x:X] -> [x:Z]) (y [y:Y] -> [y:Z]) [x : or(X,Y)] -> [x : Z]
+
+So... I suppose we can just make functions out of thin air then?  Or do I have
+to make it a legit skolem function?
+
+    X Y -> or
+
+Ok that was easy.  So sure, legitify it.  Except that violates the logical
+principle -- this is the trivial sentence `∀x∀yΕz.True` or whatever.  A proof of
+it means nothing. It would *seem* that we want to bundle the properties with the
+`or`.   And that we can!
+
+    X Y -> or
+        (x [x:X] -> [x : or])
+        (y [y:Y] -> [y : or])
+        (Z (x [x:X] -> [x:Z]) (y [y:Y] -> [y:Z]) [x : or] -> [x : Z])
+
+Ok I suppose that was not so much `or` as `union`.  I think we can make a real or
+if we use a unary proposition reification.
+
+    X Y -> or
+        ([X] -> [or])
+        ([Y] -> [or])
+        (Z ([X] -> [Z]) ([Y] -> [Z]) -> [Z])
+
+Using the idea that propositions are first-class (and w/ skolem functions, gives
+us first-class predicates).
+
+The idea of `[]` being the One True Relation (for each n) bothers me.  It is
+simultaneously elegant and gross. If we have the relations:
+
+    [x member y]
+    [x subset y]
+
+does that mean we can quantify over the operator
+
+    R -> [x R y]
+
+and speak about all (infix!) relations at the same time, meanwhile getting some
+of the elements from a prefix relation when `x` is such a symbol.  In an
+intuitionistic calculus, it is O.K. to accept meaningless statements and they
+can be simply unprovable.  (Except of course paradoxical meaningless statements,
+but I am simply writing them off as the `unsafePerformIO` of this language)
+
+Of course this is all syntactically-inspired nonsense.  What I really want is a
+way to get back and forth between relation names and relation variables;
+essentially making them first class.  However, perhaps that is not really in the
+spirit of the language; who am I the language designer to decide what kinds of
+truths will be discussed and thus what operations should be available for them.
+
+On the other hand, a simple syntax and a guiding structure go a long way.  If
+cannot be too free-form puristic... because that would be too...
+
+Anywho, can we do a simple `or` calculation?

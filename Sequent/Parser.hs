@@ -17,7 +17,7 @@ type Parser = P.Parsec String ()
 parse :: Parser a -> String -> Either P.ParseError a
 parse p = P.parse p "<input>" 
 
-lex = P.makeTokenParser P.haskellDef
+lex = P.makeTokenParser P.haskellDef { P.reservedNames = [] }
 
 clauseElem :: Parser (Either Name (Maybe Label, ClauseAtom))
 clauseElem = idful <|> ((Right . (Nothing,)) <$>  clauseAtom)

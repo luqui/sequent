@@ -1,0 +1,21 @@
+0 flatten union (nat,real) () (U1,U2,U3)
+0 done
+0 flatten U3 (union(real,nat), x) (G1,G2,G3) (H2)
+1 exact H2 H0
+1 done
+0 exact H1 G3
+0 flatten union (real,nat) () (U1',U2',U3')
+0 done
+0 intro G1 (a) (K)
+1 intro G2 (a) (K)
+2 done
+1 flatten U1' (a) (G1) (Z)
+2 exact Z H0
+2 done
+1 exact K G1
+1 done
+0 flatten U2' (a) (G1) (Z)
+0 exact K G1
+0 done
+0 exact Z H0
+0 done

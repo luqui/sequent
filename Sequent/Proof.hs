@@ -151,6 +151,7 @@ proofCheck1 (Flatten (Hyp h) es glabels hlabels ps ps') (hyp :- con) = do
 proofCheck1 (Intro (Goal gl) hvars hlabels ps ps') (hyp :- con) = do
     (AClause (ghyp :- gcon), con') <- groupExtractH con gl <// "No such goal " ++ gl
     ghyp' <- groupRevar hvars =<< groupRelabel hlabels ghyp <// "Relabeling failed"
+    let gcon' = foldr (.) id [ groupSubst k (VarExpr v) | (k,v) <- zip (groupVars ghyp) hvars ] $ gcon
     
     length (groupVars ghyp) == length hvars   // "Wrong number of variables"
     length (groupHyps ghyp) == length hlabels // "Wrong number of labels"
@@ -164,7 +165,7 @@ proofCheck1 (Intro (Goal gl) hvars hlabels ps ps') (hyp :- con) = do
     
     let consprog p p' = Program.SetResult gl (lambda p) p'
 
-    (liftA2.liftA2) consprog (ps (groupUnion hyp ghyp' :- gcon)) 
+    (liftA2.liftA2) consprog (ps (groupUnion hyp ghyp' :- gcon')) 
                              (ps' (hyp :- con'))
     
     
