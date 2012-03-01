@@ -77,6 +77,8 @@ instance Applicative (Suspension a) where
     pure = return
     (<*>) = ap
 
+{-  -- WTF, on one 6.12.1 it works and on another it doesn't. Maybe library version shit.
 instance Applicative Identity where
     pure = return
     (<*>) = ap
+-}

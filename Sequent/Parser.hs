@@ -33,7 +33,7 @@ clauseAtom = P.choice [ rel, cls ]
         where
         relAtom = P.choice [
                 Left <$> P.identifier lex,
-                Right <$> P.parens lex expr
+                Right <$> (P.symbol lex "'" *> expr)
             ]
         convert xs = ARel (map toName xs) (concatMap toArg xs)
         toName (Left i) = Just i

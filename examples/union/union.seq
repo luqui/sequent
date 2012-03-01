@@ -1,10 +1,10 @@
 union: (X Y -> union
-    (x [(x) in (X)] -> [(x) in (union)])
-    (y [(y) in (Y)] -> [(y) in (union)])
-    (Z (x [(x) in (X)] -> [(x) in (Z)]) 
-       (y [(y) in (Y)] -> [(y) in (Z)]) 
-     z [(z) in (union)] -> [(z) in (Z)]))
+    (x ['x in 'X] -> ['x in 'union])
+    (y ['y in 'Y] -> ['y in 'union])
+    (Z (x ['x in 'X] -> ['x in 'Z]) 
+       (y ['y in 'Y] -> ['y in 'Z]) 
+     z ['z in 'union] -> ['z in 'Z]))
 nat real x
-[(x) in (union(nat,real))]
+['x in 'union(nat,real)]
 ->
-[(x) in (union(real,nat))]
+['x in 'union(real,nat)]
