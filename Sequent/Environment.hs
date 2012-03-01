@@ -75,19 +75,23 @@ sequent s = do
         Right cl -> interactive (Environment cl [(cl, id)])
 
 interactive :: Environment -> IO Environment
-interactive = go
+interactive = go []
     where
-    go env = do
+    go history env = do
         display env
         maybeLine <- readline
         case maybeLine of
             Nothing -> return env
+            Just "undo" -> do
+                case history of
+                    [] -> putStrLn "Nothing was done to undo" >> go history env
+                    (x:xs) -> go xs x
             Just line -> do
                 case P.parse parseProof "<input>" line of
-                    Left err -> print err >> go env
+                    Left err -> print err >> go history env
                     Right (n,proof) -> 
                         case applyProof n (tactic proof) env of
-                            Error err  -> putStrLn ("Proof error: " ++ err) >> go env
+                            Error err  -> putStrLn ("Proof error: " ++ err) >> go history env
                             Ok (env',pf)
                                 | null (goals env') -> do
                                     putStrLn "Definition complete"
@@ -98,7 +102,7 @@ interactive = go
                                     putStrLn "----- JS -----"
                                     putStrLn $ Program.toJS prog
                                     return env
-                                | otherwise         -> go env'
+                                | otherwise         -> go (env:history) env'
 
 readline = do
     mline <- Readline.readline "> "
