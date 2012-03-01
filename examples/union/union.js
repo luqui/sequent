@@ -22,15 +22,15 @@ function (_hyps) {
       var _goals = {};
       return _goals;
     }()));
-    var U1_O47 = _tmp.H0
-    var U2_O47 = _tmp.H1
-    var U3_O47 = _tmp.H2
+    var U1_047 = _tmp.H0
+    var U2_047 = _tmp.H1
+    var U3_047 = _tmp.H2
     var union_Ereal_jnat_D_ounion = _tmp.union
     _goals.G1 = function (_hyps) {
       var _goals = {};
       var a = _hyps.x;
       var K = _hyps.H0;
-      var _tmp = U2_O47(_adapt({ G1: 'H0' }, { y: a }, function (_hyps) {
+      var _tmp = U2_047(_adapt({ G1: 'H0' }, { y: a }, function (_hyps) {
         var _goals = {};
         _goals.G1 = K;
         return _goals;
@@ -43,7 +43,7 @@ function (_hyps) {
       var _goals = {};
       var a = _hyps.y;
       var K = _hyps.H0;
-      var _tmp = U1_O47(_adapt({ G1: 'H0' }, { x: a }, function (_hyps) {
+      var _tmp = U1_047(_adapt({ G1: 'H0' }, { x: a }, function (_hyps) {
         var _goals = {};
         _goals.G1 = K;
         return _goals;

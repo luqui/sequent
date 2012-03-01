@@ -31,9 +31,9 @@ quoteJS s
     trans ',' = "_j"
     trans '.' = "_o"
     trans x | Char.isAlphaNum x = [x]
-    trans x = "_O" ++ pad 3 '0' (Numeric.showOct (Char.ord x) "")
+    trans x = "_" ++ pad 3 '0' (Numeric.showOct (Char.ord x) "")
 
-    pad n c s = replicate (length s - n) c ++ s
+    pad n c s = replicate (n - length s) c ++ s
 
 toJS :: Program -> String
 toJS (Lambda hypmap p) = 
