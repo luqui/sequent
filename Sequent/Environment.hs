@@ -133,8 +133,10 @@ indent :: String -> String -> String
 indent by = unlines . map (by ++) . lines
  
 display :: Environment -> IO ()
-display env = putStrLn . PP.render $
-    PP.vcat [ PP.text (show i ++ "::") PP.$+$ (PP.nest 2 (showClauseV c)) | (i,(c,_)) <- zip [0..] (goals env) ]
+display env = do
+    putStr "\27[2J"  -- erase display
+    putStrLn . PP.render $
+        PP.vcat [ PP.text (show i ++ "::") PP.$+$ (PP.nest 2 (showClauseV c)) | (i,(c,_)) <- zip [0..] (goals env) ]
 
 tactic :: Proof.Proof () -> Pf
 tactic p = constructor p . Roll . O $ Suspend ()
