@@ -8,9 +8,10 @@ type Hyp = String
 type Goal = String
 
 data Program
-    = Init [Hyp] Program
+    = Lambda [(Hyp,Hyp)] Program
     | Return
-    | SetResult Goal Hyp Program
+    | SetResult Goal Program Program
+    | Variable Hyp
     | Apply Hyp 
             Program [(Goal, Hyp)]  -- map results of p1 to hyps of p2
             Program [(Hyp, Hyp)]   -- variables for p2
@@ -35,23 +36,24 @@ quoteJS s
     pad n c s = replicate (length s - n) c ++ s
 
 toJS :: Program -> String
-toJS (Init hyps p) = 
+toJS (Lambda hypmap p) = 
     "function (_hyps) {\n" ++ indent "  " (
         "var _goals = {};\n" ++
-        unlines [ "var " ++ quoteJS h ++ " = _hyps." ++ quoteJS h ++ ";" | h <- hyps ] ++
-        toJS p
+        unlines [ "var " ++ quoteJS i ++ " = _hyps." ++ quoteJS o ++ ";" | (o,i) <- hypmap ] ++
+        toJS p ++
+        "return _goals;\n"
     ) ++ "}"
-toJS Return =
-    "return _goals;\n"
+toJS Return = ""
 toJS (SetResult g h p) =
-    "_goals." ++ quoteJS g ++ " = " ++ quoteJS h ++ ";\n" ++
+    "_goals." ++ quoteJS g ++ " = " ++ toJS h ++ ";\n" ++
     toJS p
+toJS (Variable h) = h
 toJS (Apply f helper helpermap p vars goalmap) =
     "var _tmp = " ++ fapply ++ ";\n" ++
     unlines [ "var " ++ quoteJS res ++ " = _tmp." ++ quoteJS rparam | (rparam, res) <- goalmap ] ++
     toJS p
     where
     fapply = quoteJS f ++ "(_adapt(" ++ adapter helpermap ++ ", " ++ object vars ++ ", " ++ 
-                  toJS (Init [] helper) ++ "()))"
+                  toJS (Lambda [] helper) ++ "()))"
     adapter xs = "{ " ++ intercalate ", " [ quoteJS k ++ ": '" ++ quoteJS v ++ "'" | (k,v) <- xs ] ++ " }"
     object xs = "{ " ++ intercalate ", " [ quoteJS k ++ ": " ++ quoteJS v | (k,v) <- xs ] ++ " }"

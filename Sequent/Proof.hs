@@ -40,6 +40,10 @@ data Proof h
     -- skolemize and introduce conclusions of a hypothesis into the 
     -- current goal
     | Flatten Hyp [Expr] [Label] [Label] h h
+
+    -- introduce the hypotheses of a clause in the conclusion
+    -- into the premises
+    | Intro Goal [Name] [Label] h h
     deriving Show
 
 instance Functor Proof where
@@ -47,18 +51,21 @@ instance Functor Proof where
     fmap f (Exact h g p)              = Exact h g (f p)
     fmap f (Witness n e p)            = Witness n e (f p)
     fmap f (Flatten h es ls ls' p p') = Flatten h es ls ls' (f p) (f p')
+    fmap f (Intro g n ls p p')        = Intro g n ls (f p) (f p')
 
 instance Foldable Proof where
     foldMap f Done = mempty
     foldMap f (Exact _ _ x) = f x
     foldMap f (Witness _ _ x) = f x
     foldMap f (Flatten _ _ _ _ x x') = f x `mappend` f x'
+    foldMap f (Intro g n ls x x') = f x `mappend` f x'
 
 instance Traversable Proof where
     sequenceA Done = pure Done
     sequenceA (Exact h g x) = Exact h g <$> x
     sequenceA (Witness n e x) = Witness n e <$> x
     sequenceA (Flatten h es l l' x x') = Flatten h es l l' <$> x <*> x'
+    sequenceA (Intro g n ls x x') = Intro g n ls <$> x <*> x'
 
 type Constructor a = a -> Proof a
 
@@ -71,6 +78,9 @@ withConstr = go
     go (Flatten h es ls l' p p') = 
         Flatten h es ls l' (\hole -> Flatten h es ls l' hole p', p)    
                            (\hole -> Flatten h es ls l' p hole, p')
+    go (Intro g n ls p p') = 
+        Intro g n ls (\hole -> Intro g n ls hole p', p)
+                     (\hole -> Intro g n ls p hole, p')
 
 type Checker f = Clause -> Error (f Program.Program)
 
@@ -85,7 +95,7 @@ Just x  <// msg = return x
 Nothing <// msg = fail msg
 
 initProgram :: Clause -> Program.Program -> Program.Program
-initProgram (Group vars hyps :- _) = Program.Init hyps'
+initProgram (Group vars hyps :- _) = Program.Lambda (zip hyps' hyps')
     where
     hyps' = vars ++ map fst hyps
 
@@ -102,10 +112,10 @@ proofCheck1 (Exact (Hyp hl) (Goal gl) ps) (hyp :- con) = do
     (g,con') <- groupExtractH con gl <// "There is no such label " ++ gl
     h <- groupFindH hyp hl <// "There is no such label " ++ hl
     g == h   // "The terms do not match"
-    (fmap.fmap) (Program.SetResult gl hl) (ps (hyp :- con'))
+    (fmap.fmap) (Program.SetResult gl (Program.Variable hl)) (ps (hyp :- con'))
 proofCheck1 (Witness n e ps) (hyp :- con) = do
     con' <- groupUnVar n con <// "There is no such variable " ++ n
-    (fmap.fmap) (Program.SetResult n (convP e)) (ps (hyp :- groupSubst n e con'))
+    (fmap.fmap) (Program.SetResult n (Program.Variable (convP e))) (ps (hyp :- groupSubst n e con'))
 proofCheck1 (Flatten (Hyp h) es glabels hlabels ps ps') (hyp :- con) = do
     all (labelFree hyp) hlabels // "One of the labels is already used in the hypotheses"
     all (labelFree con) glabels // "One of the labels is already used in the goals"
@@ -138,6 +148,21 @@ proofCheck1 (Flatten (Hyp h) es glabels hlabels ps ps') (hyp :- con) = do
 
     (liftA2.liftA2) consprog 
                     (ps (hyp :- premises)) (ps' (groupUnion hyp conclusions :- con))
+proofCheck1 (Intro (Goal gl) hvars hlabels ps ps') (hyp :- con) = do
+    (AClause (ghyp :- gcon), con') <- groupExtractH con gl <// "No such goal " ++ gl
+    ghyp' <- groupRevar hvars =<< groupRelabel hlabels ghyp <// "Relabeling failed"
+    
+    let inputs = groupVars ghyp ++ map fst (groupHyps ghyp)
+    let innards = hvars ++ hlabels
+
+    let lambda = Program.Lambda (zip inputs innards)
+    
+    let consprog p p' = Program.SetResult gl (lambda p) p'
+
+    (liftA2.liftA2) consprog (ps (groupUnion hyp ghyp' :- gcon)) 
+                             (ps' (hyp :- con'))
+    
+    
 
 skolemize :: Label -> [Expr] -> [Name] -> [Expr]
 skolemize l args vs = [ SkolemExpr l args (VarExpr v) | v <- vs ]

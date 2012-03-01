@@ -16,7 +16,10 @@ data ClauseAtom
 
 type RelName = [Maybe String]
 
-data Group = Group [Name] [(Label, ClauseAtom)]
+data Group = Group {
+        groupVars :: [Name],
+        groupHyps :: [(Label, ClauseAtom)]
+    }
     deriving Eq
 
 data Clause
@@ -108,6 +111,11 @@ groupRelabel :: [Label] -> Group -> Maybe Group
 groupRelabel labels (Group vs hs) = do
     guard $ length hs <= length labels 
     return $ Group vs (zip labels (map snd hs))
+
+groupRevar :: [Name] -> Group -> Maybe Group
+groupRevar names (Group vs hs) = 
+    -- XXX bug!  Consider what happens if you rename [x,y] to [y,x]
+    Just . Group names $ (map.fmap) (foldr (.) id [ subst v (VarExpr n) | (v,n) <- zip vs names ]) hs
 
 
 labelFree :: Group -> Label -> Bool
