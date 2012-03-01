@@ -11,10 +11,10 @@ function (_hyps) {
     var _goals = {};
     return _goals;
   }()));
-  var U1 = _tmp.H0
-  var U2 = _tmp.H1
-  var U3 = _tmp.H2
-  var union_Enat_jreal_D_ounion = _tmp.union
+  var U1 = _tmp.H0;
+  var U2 = _tmp.H1;
+  var U3 = _tmp.H2;
+  var union_Enat_jreal_D_ounion = _tmp.union;
   var _tmp = U3(_adapt({ G1: 'H0', G2: 'H1', G3: 'H2' }, { Z: union_Ereal_jnat_D_ounion, z: x }, function (_hyps) {
     var _goals = {};
     _goals.G3 = H1;
@@ -22,10 +22,10 @@ function (_hyps) {
       var _goals = {};
       return _goals;
     }()));
-    var U1_047 = _tmp.H0
-    var U2_047 = _tmp.H1
-    var U3_047 = _tmp.H2
-    var union_Ereal_jnat_D_ounion = _tmp.union
+    var U1_047 = _tmp.H0;
+    var U2_047 = _tmp.H1;
+    var U3_047 = _tmp.H2;
+    var union_Ereal_jnat_D_ounion = _tmp.union;
     _goals.G1 = function (_hyps) {
       var _goals = {};
       var a = _hyps.x;
@@ -35,7 +35,7 @@ function (_hyps) {
         _goals.G1 = K;
         return _goals;
       }()));
-      var Z = _tmp.H0
+      var Z = _tmp.H0;
       _goals.H0 = Z;
       return _goals;
     };
@@ -48,13 +48,13 @@ function (_hyps) {
         _goals.G1 = K;
         return _goals;
       }()));
-      var Z = _tmp.H0
+      var Z = _tmp.H0;
       _goals.H0 = Z;
       return _goals;
     };
     return _goals;
   }()));
-  var H2 = _tmp.H0
+  var H2 = _tmp.H0;
   _goals.H0 = H2;
   return _goals;
 }

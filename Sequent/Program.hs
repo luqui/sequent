@@ -50,7 +50,7 @@ toJS (SetResult g h p) =
 toJS (Variable h) = h
 toJS (Apply f helper helpermap p vars goalmap) =
     "var _tmp = " ++ fapply ++ ";\n" ++
-    unlines [ "var " ++ quoteJS res ++ " = _tmp." ++ quoteJS rparam | (rparam, res) <- goalmap ] ++
+    unlines [ "var " ++ quoteJS res ++ " = _tmp." ++ quoteJS rparam ++ ";" | (rparam, res) <- goalmap ] ++
     toJS p
     where
     fapply = quoteJS f ++ "(_adapt(" ++ adapter helpermap ++ ", " ++ object vars ++ ", " ++ 
