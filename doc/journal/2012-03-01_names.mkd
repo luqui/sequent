@@ -1,0 +1,77 @@
+What's in a name?
+
+In the fully abstract situation, all names are quantified over, and so any name
+can be instantiated by any other, provided the assumptions can be met.  However,
+I am trying hard not to descend into fully-verified mode, in which most of the
+programmer's effort is directed at convincing the computer that obvious truths
+are in fact true.  I am also aiming for a little linguistic practicality,
+admitting that not everything you might like to know could have a mathematical
+grounding.  The English word that you use to represent a concept is not
+irrelevant, alpha-equivalence is perhaps too liberal.  For example:
+
+    u [user u] [verified u] -> p [password p for u]
+
+is quite distinct from
+
+    u [user u] [unverified u] -> p [password p for u]
+
+On the other hand, these are not closed terms.  If we close it,
+
+    [user _] [verified _] [password _ for _]
+    u [user u] [verified u] -> p [password p for u]
+
+then we can have `verified` mean anything we want.  But that is not what this term
+means, it means something very specific by verified.  That speaks to two
+interpretations:
+
+1. `verified` should be an intensional property, and abstracting over it is
+   nonsense.
+2. `verified` should belong in an outer scope, since its meaning is not
+   self-contained
+
+The case (1) is how I initially imagined the system.  In this case, you
+discharge properties by providing English explanations in context.  E.g. 
+
+    We know u is verified because this page can only be reached through the
+    login screen.
+
+In the absence of information, each `verified` requires a unique contextual
+explanation.
+
+But what is "this page"? In a system in which information is the only mechanism
+for reasoning -- in which one cannot define a function without saying why it
+exists, to some extent -- then the only way you know you are on this page is if
+you have some knowledge object telling you that.  So your context might be:
+
+    u
+    ...
+    [change password page]
+    ->
+    [verified u]
+
+And you could explain this away with a new axiom, namely
+
+    u [user u] [change password page] -> [verified u]
+
+This says the same thing as the English explanation -- and certainly we could
+accompany this axiom with an English explanation if we chose -- but the logical
+structure of the claim is clear, and further, the claim is abstractable (up to
+the definitions of `[change password page]` and `[verified _]`).  With this, we
+can envisage a database of claims made in a given context.  We are already at
+the stage where a real project will have thousands of assumptions, and so we
+already need a way to organize them. We can fit these claims into the same
+structure (whatever it is).
+
+And then this explanation, if indeed valid, is in a form that is accessible to
+the computer.  That is, the proof searcher can make any argument you have
+already made.
+
+I dig it.  A rose by any other name would smell as sweet.  `verified` is
+meaningless without its associated laws -- you may substitute for it any other
+word.  Its laws are gradually discovered as the software develops.
+
+And immediately, since predicates are quantified, Sequent is second-order.
+
+There is a tension in its being second-order: instantiating second-order
+theorems is a pain.  You have to come up with an elimination scheme, which is
+often not intuitive.

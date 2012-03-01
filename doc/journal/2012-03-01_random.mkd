@@ -1,0 +1,32 @@
+As I was describing the project to Amanda, she told me that not only was the
+idea "useful", but it also makes a statement.  I knew about the statement, but I
+hadn't realized I was saying it with this piece, and I am happy to hear it
+echoed, because that is exactly what I wanted out of this: a programming
+langauge as a work of art, as opposed to some idealized next-gen progress-making
+problem-solver.
+
+And by separating myself from my ingrained notions of engineering power -- by
+allowing myself into the hazy world of unfamiliar constructs, the possibility of
+*not* being able to easily model my favorite tactics -- I have managed to
+actually start a project which reflects my long-standing aesthetics of software.
+There is no boundary of a Sequent project.  The software is pure to a demented
+degree: not only do you explicitly depend on your inputs, but you explicitly
+depend on what you know about them as well.  All the information about a
+function is reflected in its type, this is done by removing the function-ness
+from a function and leaving only its type, its information propagation.
+
+Spencer talks about the beauty of an ugly language.  LISP is too perfect, you
+don't want to touch it.  Caterwaul is an ugly embedding of new powerful junk
+into a language of junk, and thus he feels no guilt in cramming something else
+in there.  I would classify Sequent more on LISP's side -- I am no pragmatist.
+However, the kernel of Sequent is powerless on its own, it is immediately clear
+that to make *anything* you have to assume something, you have to sully the
+language to get started, and there is hardly such a thing as "pure code".
+
+It is questionable whether Sequent should even be called a programming language.
+It is more of a host for a style of language.  That is fine -- I am actually in
+support of multiple standard libraries, as long as the support is there to adapt
+one standard library to another.  The principle of shifting foundation lives
+strongly in this work.
+
+*If you want more you have to assume more* -- Dana Scott
