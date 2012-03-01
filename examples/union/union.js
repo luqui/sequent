@@ -1,5 +1,5 @@
-Flatten (Hyp "union") [nat,real] [] ["U1","U2","U3"] Done Flatten (Hyp "U3") [union(real,nat),x] ["G1","G2","G3"] ["H2"] Exact (Hyp "H1") (Goal "G3") Flatten (Hyp "union") [real,nat] [] ["U1'","U2'","U3'"] Done Intro (Goal "G1") ["a"] ["K"] Flatten (Hyp "U2'") [a] ["G1"] ["Z"] Exact (Hyp "K") (Goal "G1") Done Exact (Hyp "Z") (Goal "H0") Done Intro (Goal "G2") ["a"] ["K"] Flatten (Hyp "U1'") [a] ["G1"] ["Z"] Exact (Hyp "K") (Goal "G1") Done Exact (Hyp "Z") (Goal "H0") Done Done Exact (Hyp "H2") (Goal "H0") Done
------ JS -----
+//Flatten (Hyp "union") [nat,real] [] ["U1","U2","U3"] Done Flatten (Hyp "U3") [union(real,nat),x] ["G1","G2","G3"] ["H2"] Exact (Hyp "H1") (Goal "G3") Flatten (Hyp "union") [real,nat] [] ["U1'","U2'","U3'"] Done Intro (Goal "G1") ["a"] ["K"] Flatten (Hyp "U2'") [a] ["G1"] ["Z"] Exact (Hyp "K") (Goal "G1") Done Exact (Hyp "Z") (Goal "H0") Done Intro (Goal "G2") ["a"] ["K"] Flatten (Hyp "U1'") [a] ["G1"] ["Z"] Exact (Hyp "K") (Goal "G1") Done Exact (Hyp "Z") (Goal "H0") Done Done Exact (Hyp "H2") (Goal "H0") Done
+//----- JS -----
 function (_hyps) {
   var _goals = {};
   var nat = _hyps.nat;
