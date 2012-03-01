@@ -5,6 +5,7 @@ import Control.Applicative
 import Control.Monad (guard)
 import Data.List (intercalate)
 import qualified Data.Set as Set
+import qualified Text.PrettyPrint as PP
 
 type Name = String
 type Label = String
@@ -27,7 +28,7 @@ data Clause
     deriving Eq
 
 instance Show Clause where
-    show = showClause
+    show = render1 . showClause
 
 data Expr
     = VarExpr Name
@@ -35,46 +36,46 @@ data Expr
     deriving Eq
 
 instance Show Expr where
-    show = showExpr
+    show = render1 . showExpr
 
-showAtom :: ClauseAtom -> String
+render1 = PP.renderStyle (PP.style { PP.mode=PP.OneLineMode }) 
+
+showAtom :: ClauseAtom -> PP.Doc
 showAtom (ARel n xs) = showRel n (map showExpr xs)
-showAtom (AClause c) = "(" ++ showClause c ++ ")"
-
-showExpr :: Expr -> String
-showExpr (VarExpr n) = n
-showExpr sk@(SkolemExpr l es v) = l ++ showSkolem l sk
     where
-    showSkolem cx (VarExpr n)
-        | n == cx = ""
-        | otherwise = "." ++ n
-    showSkolem cx (SkolemExpr l es v)
-        | l == cx = args ++ showSkolem cx v
-        | otherwise = "." ++ l ++ args ++ showSkolem l v
-        where
-        args = "(" ++ intercalate "," (map showExpr es) ++ ")"
+    showRel :: RelName -> [PP.Doc] -> PP.Doc
+    showRel name args = PP.brackets (PP.hsep (atoms name args))
 
-showRel :: RelName -> [String] -> String
-showRel = \name args -> "[" ++ intercalate " " (atoms name args) ++ "]"
-    where
-    atoms (Just s:ss) as = s : atoms ss as
-    atoms (Nothing:ss) (a:as) = ("'" ++ a) : atoms ss as
+    atoms (Just s:ss) as = PP.text s : atoms ss as
+    atoms (Nothing:ss) (a:as) = (PP.text "'" PP.<> a) : atoms ss as
     atoms (Nothing:ss) [] = error "Too few arguments to relation"
     atoms [] (a:as) = error "Too many arguments to relation"
     atoms [] [] = []
+showAtom (AClause c) = PP.parens (showClause c)
 
-showClause :: Clause -> String
-showClause (hyps :- cons) = showg hyps ++ " -> " ++ showg cons
+showExpr :: Expr -> PP.Doc
+showExpr (VarExpr n) = PP.text n
+showExpr sk@(SkolemExpr l es v) = PP.text l PP.<> showSkolem l sk
     where
-    showg (Group vs hs) = unwords (vs ++ map (showAtom.snd) hs)
+    showSkolem cx (VarExpr n)
+        | n == cx = PP.empty
+        | otherwise = PP.text "." PP.<> PP.text n
+    showSkolem cx (SkolemExpr l es v)
+        | l == cx = args PP.<> showSkolem cx v
+        | otherwise = PP.hcat [PP.text ".", PP.text l, args, showSkolem l v]
+        where
+        args = PP.parens . PP.hcat . PP.punctuate (PP.text ",") . map showExpr $ es
 
-showClauseV :: Clause -> String
-showClauseV (hyps :- cons) = showg hyps ++ "->\n" ++ showg cons
+showClause :: Clause -> PP.Doc
+showClause (hyps :- cons) = PP.sep [showg hyps, PP.text "->", showg cons]
     where
-    showg (Group vs hs) = unlines $ 
-        mkVs vs ++ map (\(i,x) -> i ++ ": " ++ showAtom x) hs
-    mkVs [] = []
-    mkVs vs = [unwords vs]
+    showg (Group vs hs) = PP.sep (PP.fsep (map PP.text vs) : map (showAtom.snd) hs)
+
+showClauseV :: Clause -> PP.Doc
+showClauseV (hyps :- cons) = PP.vcat [showg hyps, PP.text "->", showg cons]
+    where
+    showg (Group vs hs) = PP.vcat (PP.fsep (map PP.text vs) : map labAtom hs)
+    labAtom (l,a) = PP.text l PP.<> PP.text ":" PP.<+> showAtom a
 
 groupNull :: Group -> Bool
 groupNull (Group [] []) = True

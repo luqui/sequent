@@ -15,6 +15,7 @@ import Control.Monad (forM_, when, guard)
 import Control.Monad.Identity
 import qualified System.Console.Readline as Readline
 import qualified Sequent.Program as Program
+import qualified Text.PrettyPrint as PP
 
 type PfLink = Suspension () :. Proof.Proof
 type Pf = Mu PfLink
@@ -132,9 +133,8 @@ indent :: String -> String -> String
 indent by = unlines . map (by ++) . lines
  
 display :: Environment -> IO ()
-display env = 
-    forM_ (zip [0..] (goals env)) $ \(i,(c,_)) ->
-        putStrLn $ show i ++ "::\n" ++ indent "  " (showClauseV c)
+display env = putStrLn . PP.render $
+    PP.vcat [ PP.text (show i ++ "::") PP.$+$ (PP.nest 2 (showClauseV c)) | (i,(c,_)) <- zip [0..] (goals env) ]
 
 tactic :: Proof.Proof () -> Pf
 tactic p = constructor p . Roll . O $ Suspend ()
