@@ -1,0 +1,98 @@
+I'm such a slacker. Skipping class to write in this journal. Forgive me,
+studies, I just dig this language right now.
+
+This is bothering me.  I don't know if I actually want Sequent to be
+second-order. Quantifying over predicates is philosophically consistent, and I
+think desirable.  But higher order logic gets compilcated, and it may be more
+functional than Sequent aims.  Let's say you have this context:
+
+    (x -> ['x = 'x])
+    a b
+    elim: (  -- the Liebniz eliminator for a = b
+        Λ[P _]
+        [P a] 
+        -> 
+        [P b]
+    )
+    ->
+    ['a = 'b]
+
+How do we go about proving this? Clearly we flatten elim with some argument for
+`[P _]`.  In a typical dependently-typed language, `P = λx. [a = x]`. But how
+would we express that in this language?
+
+`P` would have to be a function, and as yet we don't have any way to construct
+functions that can be evaluated by proofs. Making the logic second-order means
+adding functions and evaluation -- a significant increase in complexity. 
+
+What is the *logical* way to express equality?  It appears, according to
+Wikipedia, that it cannot be done as a finite set of axioms in first-order
+logic.
+
+Ok, so what is the way to express equality in Sequent, then?
+
+The PiSigma folks seemed to think that equality could be an axiom, and that it
+would reproduce the power of elimination schema. Their calculus suffered from
+some subject reduction problems, but we're in a different setting where that
+doesn't really make sense.
+
+Or we could give "function evaluation" for the second but not first order case
+(the latter can be achieved by equality).  In the second order case, you can
+pass a clause with the right number of variables, and it will be substituted.
+That is, we could perform the proof above.
+
+    > flatten elim (x -> ['a = 'x])
+
+Giving:
+
+    ...
+    ->
+    ['a = 'a]
+
+    ...
+    ['a = 'b]
+    ->
+    ['a = 'b]
+
+Which is trivially solvable.
+
+So, clauses play the role of functions?  Something seems off about that. In the
+semantics, we just flattened `elim` with the argument `forall x, ['a = 'x]`,
+which, by itself, is patently false and probably nonsense, and yet we used it.
+This approach does not jive with the semantics.  This is a *lambda* -- a proof
+term -- not a forall.  I am infinitely hesitant to add lambdas, because it
+undermines the nature of the language by providing a way to define things other
+than by describing them.
+
+Here's a way to make a lambda if you have equality:
+
+    (x -> y ['y = '(x + 1)])
+
+This is interpretable as a logical sentence (albeit a trivial one): `forall x,
+exists y, y = x + 1`.  Can we abstract over functions?
+
+    f: (x -> f)
+    (x y -> ['f(x) = 'f(y)] -> ['x = 'y])
+
+Is that contrary to the spirit as well? `f` is `forall x, exists f, True`, which
+is clearly provable, and then we are talking about properties of the witness.
+This again seems against the spirit.  But without functions, much of our
+mathematical machinery is eliminated.
+
+What if we are not trying hard enough to model these concepts?  Functions are
+not innate in the mathematical world; they are defined.  In my functional world
+they seem more primitve than sets, but sets are perhaps a better fit for logic.
+There is a reason mathematicians don't use lambda calculus.
+
+And yet, defining set theory, or the little emulation thereof that I was about
+to, one requires infinite axiom schema, parameterized over wffs in several
+variables -- i.e. they are second-order axioms.  Finite first-order logic is
+simply not strong enough to say what mathematicians want to say.
+
+Pressing questions:
+
+* Can we increase the system's modeling power while maintaining a logical
+outlook?
+* If not, what are the consequences for the system?  Does this become type
+theory?  I'm willing to avoid type theory merely by artistic license (it's been
+done).

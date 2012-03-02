@@ -136,7 +136,7 @@ depend on derivative-tracking numbers, but knows their scope so does *not* want
 numbers to default to derivative-tracking (although that would be sweet!).  Like
 I concluded before, if a theorem uses differentiable numbers as an
 implementation detail which gets eliminated before interacting with the world,
-then it would be nice if such global decisions were allowed not to affect it.
+then it should not appear in the interface's assumptions.
 
 (On second thought, that dynamic falls out quite beautifully.  Perhaps a
 manipulator module depends on differentiable numbers internally only.  Then its
