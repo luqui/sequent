@@ -1,0 +1,176 @@
+The language is developed enough (although the second-order issue is not quite
+worked out) that I want to start reusing code.  I think the code reuse tools
+should come before the tactic language, as kind of a hunch.  Also, if I do it in
+this order, then when designing the tactic language I can use what I have built
+from the code reuse tools -- eg. search tactics and whatnot. Let's keep that in
+mind.
+
+The principle is *no boundaries*.  Every piece of code is potentially included
+in every project.  I imagine a centralized database of code, like CPAN or
+hackage but omnipresent, as *part* of the language. It is also totally 21st
+century to consider its distribution; i.e. maybe it can talk to other such
+databases. But that seems like it would be fine as an afterthought.
+
+So my primary concern is in the management of assumptions.  Every theorem comes
+with its full-glory signature, which I suspect may sometimes have hundreds of
+assumptions.  It won't pass to have to instantiate each assumption by hand,
+saying "yes, what you mean by 'number' is the same as what I mean by 'number'".
+Of course, the power of explicit assumptions comes from the ability to say "no,
+I mean something different by 'number'", but that is nonetheless a rare case, I
+suspect.
+
+Groups of assumptions may be common, I am not sure though, it may look more like
+hierarchies.  Which of the following is more representative of `nat`?
+
+    -- (1)
+    *[nat _]  -- trying out * for proposition binding
+    zero 
+    [nat 'zero]
+    succ: (x [nat 'x] -> succ [nat 'succ])
+    plus: (x y [nat 'x] [nat 'y] -> plus [nat 'plus])
+    times: (x y [nat 'x] [nat 'y] -> times [nat 'times])
+
+    -- (2)
+    nat: (-> 
+        *[nat _]
+        zero [nat 'zero]
+        succ: (x [nat 'x] -> succ [nat 'succ])
+    natUtil: (*[nat _] ->
+        plus: (x y [nat 'x] [nat 'y] -> plus [nat 'plus])
+        times: (x y [nat 'x] [nat 'y] -> times [nat 'times])
+
+    -- (3)
+    nat: (*[nat _] ->
+        zero [nat 'zero]
+        succ: (x [nat 'x] -> succ [nat 'succ])
+    natUtil: (*[nat _] ->
+        plus:  (x y [nat 'x] [nat 'y] -> plus [nat 'plus])
+        times: (x y [nat 'x] [nat 'y] -> times [nat 'times])
+
+As assumptions, (1) and (2) are equivalent, whereas (3) is parameterized on a
+concrete `[nat _]`.  Wait, (2) and (3) don't make sense... `natUtil` says that
+it can create `plus` and `times` for any predicate `[nat _]` you choose.  It
+would have to be:
+
+    natUtil: (
+        *[nat _] 
+        zero [nat 'zero] 
+        succ: (x [nat 'x] -> succ [nat 'succ])
+        -> 
+        plus: (x y [nat 'x] [nat 'y] -> plus [nat 'plus])
+        times: (x y [nat 'x] [nat 'y] -> times [nat 'times]))
+
+together with `nat` from (2).  We would, of course, instantly expand to make
+`plus` and `times` concrete. 
+
+The advantage (2) has over (1) is that (2) is aware that `plus` and `times` are
+defined in terms of `zero` and `succ` (that is impossible, btw, I'm just putting
+off destruction because it's hard).  However, that means that the only way you
+can instantiate (2) is if you have your `plus` and `times` defined in terms of
+`zero` and `succ` -- which you wouldn't want to on a real computer.  (1) is
+*weaker*, and so (1) beats (2).  If you need to know `plus` is defined in terms
+of `zero` and `succ`, surely it has a database entry of its own:
+
+    *[nat _] 
+    zero [nat 'zero] 
+    (x [nat 'x] -> succ [nat 'succ])
+    x y [nat 'x] [nat 'y] 
+    -> 
+    plus [nat 'plus]
+
+So you can use that one and instantiate it explicitly.  In other words, it is a
+*different dependency* than the standard plus.
+
+There is one variant of (1) which is equal in logical strength, but organized
+differently:
+
+    -- (4)
+    *[nat _]
+    natPrim: (-> zero [nat 'zero] (x [nat 'x] -> succ [nat 'succ]))
+    natUtil: (->
+        (x y [nat 'x] [nat 'y] -> plus [nat 'plus])
+        (x y [nat 'x] [nat 'y] -> times [nat 'times]))
+
+This has the advantage of not cluttering your local namespace as much in the
+presence of many assumptions.  For example, a parser combinator library could
+have a hundred funtions.
+
+But it also removes a level of granularity. It's likely that a theorem could
+depend on `plus` but not `times`, and thus could be instantiated on a semigroup
+instead of a ring.  `natUtil`, thus, is stronger than it needs to be, whereas
+(1) would say exactly what it needs.
+
+A smart weakener could remove `times` from `natUtil`, though.  The granularity
+is about the complexity of the weakener and whether it can dip into the
+structure of hypotheses or not.
+
+We don't yet have a technical criterion for whether to organe "module
+assumptions" like (1) or like (4).
+
+Let's shift our focus outward, looking at how the programmer interacts with the
+database.  A hammer has entered my mind, "tags". Perhaps assumptions have
+(socially and retroactively editable) tags indicating their purpose or
+association.  For example
+
+    (x y [nat 'x] [nat 'y] -> plus [nat 'plus])
+
+might have the tags (number, group). Then as you are interacting with the
+system, your assumptions are organized by tags.  That's almost a no-brainer.
+
+I am interested in how to communicate the automatic instantiation of a `nat` in
+your environment with a `nat` in an assumption you are importing.
+
+I just noticed a kind of fundamental distinction: do you import assumptions or
+theorems?  Because of closed-terms, when you import a theorem, it becomes an
+assumption of your code. But does importing a theorem do something more than
+adding its signature as an assumption?
+
+In the initial design doc, I mentioned "links", where theorems would come with
+assumptions and also a linkage which matched assumptions to the database.  But
+that is not quite right: if I am developing code for a python backend using
+python's `plus` implementation, someone else developing for a javascript backend
+doesn't want python's `plus`, they want javascript's `plus`.
+
+On the flip side, someone creating a graphical manipulation system may want to
+depend on derivative-tracking numbers, but knows their scope so does *not* want
+numbers to default to derivative-tracking (although that would be sweet!).  Like
+I concluded before, if a theorem uses differentiable numbers as an
+implementation detail which gets eliminated before interacting with the world,
+then it would be nice if such global decisions were allowed not to affect it.
+
+(On second thought, that dynamic falls out quite beautifully.  Perhaps a
+manipulator module depends on differentiable numbers internally only.  Then its
+signature is
+
+    dNumbers: ...
+    ...
+    ->
+    ...
+
+but its users do not interact with `dNumbers` at all, so the corresponding
+assumption does not include it. You have to know about AD when you instantiate
+the assumption, not when you depend on it.)
+
+There is still a tension here, two different use cases begging for opposite
+behavior.  Perhaps I am thinking too globally, as in a manipulation *system* as
+opposed to manipulation *utilities*.  In mathematics we always declare when some
+input must be differentiable explicitly. Perhaps globally replacing `number`
+with a differentiable version is not called for.  (But if `number` supports a
+full differentiable instantiation, why not?)
+
+Typeclasses automatically route these assumptions around.  E.g. a fully general
+signature
+
+    someComplexAlgorithm :: (Num a, Num b) -> a -> [b] -> b
+
+Here, based on the context of its usage, we can decide whether `b` ought to be a
+differentiable number or not.  I suppose Sequent's signatures can have the same
+information encoded in them (as long as it is not too much of a pain to declare
+two different `Num` assumptions). But the assumption-focused design seems to
+discourage that, you may not think that `a` and `b` can be different when
+writing the theorem.  Is that something the weakener can pick up?  (Any such
+divergence will occur at a nonlinearity in the proof -- when an argument is used
+more than once.  We might be able to adapt a unifier to take advantage of this
+and find when one assumption can be used at two different instantiations.  In
+fact, this forms a nice duality, since we also want to discharge assumptions
+that are used at the other nonlinearity: zero times.)
