@@ -1,0 +1,148 @@
+I posted a gist modeling functions.  It follows verbatim:
+
+----
+
+`x :Y` is shorthand for `x [Y 'x]`.
+
+Definition of functions:
+
+    A B :*
+    ->
+    function :*
+    (f :function x :A -> apply :B)   -- application
+    ((x :A -> y :B) ->               -- abstraction
+        f :function
+        (x :A -> ['apply(f,x) = 'y(x)]))
+
+Naturals and its constructors.
+
+    nat :*
+    zero :nat
+    (x :nat -> succ :nat)
+
+A successor function:
+
+    succF :function(nat,nat)
+    (x :nat -> ['apply(nat,nat)(succF,x) = 'succ(x)])
+
+But functions are not the typical way of working with stuff in this language, so
+this is just a proof of modeling power.
+
+----
+
+It is verbose but pleasingly semantically clean: no shenanigans, just math.
+"`f` is a function" is an assumption, and the action of `f` is another
+assumption.  We even have the potential to split it up, only specifying the
+action of `f` for positive naturals but assuming it is defined for all naturals,
+etc.  It is a little annoying to have to promote the skolem function into a
+proper object, but also philosophically fitting in a way.
+
+This development requires equality and liebniz substitution, which I am
+comfortable with as an axiom.  It also appears to need first-class propositions,
+although that could alternatively be modeled with sets... but as we have seen,
+modeling sets requires first-class propositions.
+
+Can we make do with nominal propositions and equality, without having to have
+lambda eliminators? Lambdas are a very high design cost for me at this point --
+partially because it allows one to fall back on FP instincts, which I am trying
+to break away from.  Also eliminators are hard to reason about; I prefer
+equality, it allows more granular developments (i.e. I can make smaller steps at
+a time during a proof).
+
+The proposition syntax is failing.  I am probably just attached to the
+interspersed engligh-like functions, but they just don't abstract very well. But
+`f x1 x2` or `f(x1,x2)` does not read very well (eg. `elem(x,A)` is less
+pleasing than `[x in A]`, but `['x in 'A]` is getting noisier). O my native
+language; why couldn't you have been lojban?
+
+What is an alternative?  If `P(x)` then `Q(x)` is very logic sounding, but
+`P(x)` does not read like a proposition; propositions have verbs.  However, I
+want to be able to syntactically translate the proposition syntax into a
+functional form, so we can see the predicate and the list of arguments without
+looking at the context. That rules out Agda-like multary operators and other
+such predeclared things.
+
+There is smalltalk message syntax. eg. `t replace: x with: y` which is a message
+whose name is `repalce:with:`.  It *requires* alternation of terms and names...
+not quite as free-form as my bracket syntax. It may be worth doing that, but
+we're already using colons (also it just doesn't feel right).
+
+To be most clean, there would be no punctuation: (1) `x in y` or (2) `even x` or
+(3) `x even`. We cannot have all three, of course. We could distinguish between
+them based on the number of arguments: odd number, infix; even number,
+one of prefix/postfix.  Oh right, but because propositions are higher order, we
+need a place for the skolem function arguments... and `x in(s) y` is just fuckin
+weird.
+
+I have been misled by the notation of skolem function application more than
+once, maybe it is time to reassess it.  I *think* we can't just do away with
+it, since we have used it quite heavily in the function modeling example. For
+instance, how does one apply functions without it... unless we want to be able
+to introduce arbitrary function symbols into the logic the way propositions used
+to be, but I found that the ability to abstract is valuable, so I don't think I
+would end up liking that. But, on the other hand, there is a way that they don't
+behave like functions, at least not the way I'm used to.  We are in a notational
+reversal -- mathematical functions are applied with `apply` and skolem functions
+(which are not as functiony) are applied with mathematical notation.  Of course,
+functions not being built into the language makes mathematical notation hard to
+do without the notation being very flexible and even first-class.  There may be
+a time for that, but Haskell has made me value a simple, consistent notation
+(perhaps I would like Scheme even more if I ever got into it).  So I think we
+will have to leave mathematical function notation alone for the time being, but
+we can still address the skolem function notation.
+
+But the current notation is good in a lot of ways. It allows us to associate
+arguments with the labels they come from, it chains nicely but transparently
+(though the necessity of labeling gets kind of annoying -- case in point, I did
+not appropriately label the function modeling example).  Also labels and types
+can't both have colons, that just too many colons. It works for Coq because they
+are actually the same thing, but they are quite different for us.
+
+Maybe the brackets can denote the main body of the proposition.  So we would
+have:
+
+    foo: (a -> bar: (b -> *something about in*))
+    foo(x).bar(y).[z in w]
+
+Hence the name looks very much like `[_ in _]`.  It just doesn't look bindable.
+I enjoy the look of anonymous quantification.  Maybe we do not need to specify
+the arity in binding, so we could just bind `in`.  `_in_`? `[x in y] = in(x,y)`.
+Wait a minute, these are just higher order propositions, not predicates, so it's
+unclear which arguments go in the slots.  Some rule about the innermost may
+work, but it is also somewhat complicated.  It may just be easier to bracket
+propositions and not worry about arguments.  `[in(x,A)]`, so brackets are just
+an operator that says "treat this as a proposition".  The syntax does not
+require this to be circumfix, and even that simple proposition is circumfixly
+noisy.
+
+    [in x A]
+    ?in(x,A)
+    'in(x,A)
+    'in(x,A)'
+    <in(x,A)>
+    /in(x,A)
+    /in(x,A)/
+    |in(x,A)|
+    !@#$in(x,A)$#@!
+    when in(x,A)
+    true in(x,A)
+
+Ugh... ok, what if we do haskellian skolem function application (modulo
+implications of partial application), so:
+
+    foo: (x y -> bar: (z -> w))
+    (foo x y)(bar z)(w)
+
+No... not convincing.  The dot syntax is familiar and nice.  I like brackets,
+but `[in(x,A)]` just has too much damn punctuation.
+
+I suppose technically we don't need commas between arguments. `[in(x A)]`. That
+didn't help a whole lot.
+
+Hmm what about `in[x,A]`... i.e. you can use brackets to imply brackets around
+the whole expression.  But I don't know how that works with chaining, it feels
+inconsistent.
+
+Fuckit I don't know.  I'll stick with `[]` as a proposition operator and just
+let it be noisy.  Maybe something will hit me later.  Let's implement it and
+equality.
