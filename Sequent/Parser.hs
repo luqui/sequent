@@ -29,13 +29,8 @@ clauseElem = idful <|> ((Right . (Nothing,)) <$>  clauseAtom)
 clauseAtom :: Parser ClauseAtom
 clauseAtom = P.choice [ rel, cls ] 
     where
-    rel = P.brackets lex exprEq
+    rel = AProp <$> P.brackets lex expr
     cls = AClause <$> P.parens lex clause
-
-    exprEq = p <$> expr <*> P.optionMaybe (P.symbol lex "=" *> expr)
-        where
-        p e Nothing = AProp e
-        p e (Just e') = AEq e e'
 
 group :: Parser Group
 group = engroup <$> P.many clauseElem

@@ -12,7 +12,6 @@ type Label = String
 
 data ClauseAtom
     = AProp Expr
-    | AEq Expr Expr
     | AClause Clause
     deriving Eq
 
@@ -41,7 +40,6 @@ render1 = PP.renderStyle (PP.style { PP.mode=PP.OneLineMode })
 
 showAtom :: ClauseAtom -> PP.Doc
 showAtom (AProp p) = PP.brackets (showExpr p)
-showAtom (AEq e e') = PP.brackets (showExpr e PP.<+> PP.text "=" PP.<+> showExpr e')
 showAtom (AClause c) = PP.parens (showClause c)
 
 showExpr :: Expr -> PP.Doc
@@ -117,7 +115,6 @@ subst :: Name -> Expr -> ClauseAtom -> ClauseAtom
 subst n e = go
     where
     go (AProp p) = AProp (substExpr n e p)
-    go (AEq t t') = AEq (substExpr n e t) (substExpr n e t')
     go (AClause (hyp :- con)) =
         AClause (groupSubst n e hyp  :- groupSubst n e con)
         -- XXX if n is bound in hyp, our substitutions are overzealous
@@ -131,20 +128,6 @@ substExpr n e (SkolemExpr l es v)
     where
     substSkolem (VarExpr n) = VarExpr n
     substSkolem (SkolemExpr l es v) = SkolemExpr l (map (substExpr n e) es) (substSkolem v)
-
-leibnizExpr :: Expr -> Expr -> Expr -> Expr
-leibnizExpr from to e | e == from = to
-leibnizExpr from to (VarExpr n) = VarExpr n
-leibnizExpr from to (SkolemExpr l es v) = SkolemExpr l (map (leibnizExpr from to) es) (leibnizExpr from to v)
-
-leibnizGroup :: Expr -> Expr -> Group -> Group
-leibnizGroup from to (Group vars hyps) = Group vars ((fmap.fmap) (leibniz from to) hyps)
-    -- XXX what if from/to have free vars occuring in vars?
-
-leibniz :: Expr -> Expr -> ClauseAtom -> ClauseAtom
-leibniz from to (AProp e) = AProp (leibnizExpr from to e)
-leibniz from to (AEq e e') = AEq (leibnizExpr from to e) (leibnizExpr from to e')
-leibniz from to (AClause (hyp :- con)) = AClause (leibnizGroup from to hyp :- leibnizGroup from to con)
 
 dismember :: (Eq a) => [(a,b)] -> a -> Maybe (b,[(a,b)])
 dismember [] x' = Nothing

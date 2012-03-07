@@ -44,9 +44,6 @@ data Proof h
     -- introduce the hypotheses of a clause in the conclusion
     -- into the premises
     | Intro Goal [Name] [Label] h h
-
-    -- leibniz substitution in goal
-    | Leibniz Hyp Goal h
     deriving Show
 
 instance Functor Proof where
@@ -170,10 +167,8 @@ proofCheck1 (Intro (Goal gl) hvars hlabels ps ps') (hyp :- con) = do
 
     (liftA2.liftA2) consprog (ps (groupUnion hyp ghyp' :- gcon')) 
                              (ps' (hyp :- con'))
-proofCheck1 (Leibniz (Hyp hl) (Goal gl) ps) (hyp :- con) = do
-    AEq src target <- groupFindH hyp hl <// "No such hypothesis"
-    (g,con') <- groupExtractH con gl <// "No such goal"
-    ps (hyp :- groupAddH gl (leibniz src target g) con')
+    
+    
 
 skolemize :: Label -> [Expr] -> [Name] -> [Expr]
 skolemize l args vs = [ SkolemExpr l args (VarExpr v) | v <- vs ]
