@@ -1,0 +1,65 @@
+Here is a journal entry transcribed from my notebook.
+
+----
+
+Sequent is breaking down. I have been so far unable to construct a system of
+sufficent power that stays true to its logical roots. So I must ask: what is
+this piece? What am I saying about programming, and what does my failure tell me
+about it?
+
+The logical underpinnings are, to first order, indidental. But as a language
+that concerns itself with knowledge, logical mechanisms -- ways to relate and
+connect knowledge -- are seemingly unavoidable. But I am perhaps letting the
+logic steal the visio in my fascinations of paradigms. The vision is about
+knowledge and distributed programming. A way of thinking locally may not matter
+so much because the global properties are so different. On the flipside, perhaps
+the global properties demand a new way of relating to code locally. Indeed, a
+wonderful property of the logical way was that it enabled an automated search
+for implementations.
+
+It may be that I am thinking too mathematically. I am not creating a proof
+assistant! Coq's interface is only inspiration, I am not cloning it. I just want
+a wa to encode what we know about parts of the program, and it is beautiful and
+tempoting to make knowledge the only part of the description.
+
+When I say it may not be possible, I mean it in the sense that I cannot recover
+my favorite programming structures from it. But perhpas we are not operating at
+the level we are use to. Maybe we are even operating above functions --
+components or something -- the algorithmic details left to the object language.
+In this case Sequent need not even be Turing complete. And code in the object
+language need not be conventional.
+
+So what kinds of code can we characterize with knowledge? What kinds of code can
+be seen as evidence for some fact?
+
+Network code keeps springing to mind for some reason. (But if any kind of code
+needs rethinking, it's UI and network code)
+
+To be true to the ditributed vision, any code that could be considered to stand
+on its own should have a signature. So we can work from both directions --
+signaturing familiar code and finding components that lend themselves to
+signatures.
+
+----
+
+On the back of the page, written atop a smudge of eraser marks, is written
+
+    gravatar_url:
+        e :email
+        ->
+        u :url
+        [u refers to an image]
+        (   i :image  [u refers to i]
+            usr :user [e is usr's email]
+            ->
+            [i is an image of u])
+
+----
+
+This snippet seems to indicate that I am thinking of propositions more like
+documentation again and less like elements of a higher-order logic.  An early
+journal got very excited about abstracting over predicates, but with such
+Englishian propositions, it's unlikely that that will work.  Indeed, `[u refers
+to i]` could mean a number of different things depending on what `u` and `i`
+are.  With this orientation toward propositions, the earlier design of being
+allowed to discharge props by explanation might be the best again.
