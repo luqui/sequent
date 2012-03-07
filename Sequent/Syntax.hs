@@ -11,9 +11,11 @@ type Name = String
 type Label = String
 
 data ClauseAtom
-    = AProp Expr
+    = ARel RelName [Expr]
     | AClause Clause
     deriving Eq
+
+type RelName = [Maybe String]
 
 data Group = Group {
         groupVars :: [Name],
@@ -39,7 +41,16 @@ instance Show Expr where
 render1 = PP.renderStyle (PP.style { PP.mode=PP.OneLineMode }) 
 
 showAtom :: ClauseAtom -> PP.Doc
-showAtom (AProp p) = PP.brackets (showExpr p)
+showAtom (ARel n xs) = showRel n (map showExpr xs)
+    where
+    showRel :: RelName -> [PP.Doc] -> PP.Doc
+    showRel name args = PP.brackets (PP.hsep (atoms name args))
+
+    atoms (Just s:ss) as = PP.text s : atoms ss as
+    atoms (Nothing:ss) (a:as) = (PP.text "'" PP.<> a) : atoms ss as
+    atoms (Nothing:ss) [] = error "Too few arguments to relation"
+    atoms [] (a:as) = error "Too many arguments to relation"
+    atoms [] [] = []
 showAtom (AClause c) = PP.parens (showClause c)
 
 showExpr :: Expr -> PP.Doc
@@ -114,7 +125,9 @@ labelFree g l = isNothing (groupFindH g l)
 subst :: Name -> Expr -> ClauseAtom -> ClauseAtom
 subst n e = go
     where
-    go (AProp p) = AProp (substExpr n e p)
+    go (ARel n' es)
+        -- substitute n'?  Higher order...
+        = ARel n' (map (substExpr n e) es)
     go (AClause (hyp :- con)) =
         AClause (groupSubst n e hyp  :- groupSubst n e con)
         -- XXX if n is bound in hyp, our substitutions are overzealous
