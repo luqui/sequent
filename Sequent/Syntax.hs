@@ -73,11 +73,17 @@ showClause (hyps :- cons) = PP.sep [showg hyps, PP.text "->", showg cons]
     where
     showg (Group vs hs) = PP.sep (PP.fsep (map PP.text vs) : map (showAtom.snd) hs)
 
-showClauseV :: Clause -> PP.Doc
-showClauseV (hyps :- cons) = PP.vcat [showg hyps, PP.text "->", showg cons]
+showClauseVOpen :: (Clause -> PP.Doc) -> Clause -> PP.Doc
+showClauseVOpen rec (hyps :- cons) = PP.vcat [showg hyps, PP.text "->", showg cons]
     where
     showg (Group vs hs) = PP.vcat (PP.fsep (map PP.text vs) : map labAtom hs)
-    labAtom (l,a) = PP.text l PP.<> PP.text ":" PP.<+> showAtom a
+    labAtom (l,a) = PP.text l PP.<> PP.text ":" PP.<+> showAtomV a
+
+    showAtomV (AClause c) = PP.parens (rec c)
+    showAtomV x = showAtom x
+
+showClauseV = showClauseVOpen showClause
+showClauseVV = showClauseVOpen showClauseVV
 
 groupNull :: Group -> Bool
 groupNull (Group [] []) = True

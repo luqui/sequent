@@ -60,6 +60,6 @@ toJS (Apply f helper helpermap p vars goalmap) =
     adapter xs = "{ " ++ intercalate ", " [ quoteJS k ++ ": '" ++ quoteJS v ++ "'" | (k,v) <- xs ] ++ " }"
     object xs = "{ " ++ intercalate ", " [ quoteJS k ++ ": " ++ quoteJS v | (k,v) <- xs ] ++ " }"
 toJS (SourceCode gs src p) =
-    "(funcion() {\n" ++ indent "  " src ++ varmap ++ "})();\n"
+    "(funcion() {\n" ++ indent "  " (src ++ varmap) ++ "})();\n"
     where
     varmap = unlines [ "_goals." ++ quoteJS g ++ " = " ++ quoteJS g ++ ";" | g <- gs ]

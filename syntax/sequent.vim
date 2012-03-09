@@ -8,11 +8,11 @@ if exists("b:current_syntax")
     finish 
 endif
 
-syn match seqLabel "\(\<[A-Za-z_]\+\)\:"
+syn match seqLabel "\(\<[A-Za-z_][A-Za-z_0-9]*\)\:"
 syn match seqOperator "->"
-syn match seqBinding "\<[A-Za-z_]\+\>\(\([^:]\|$\)\&\)"
+syn match seqBinding "\<[A-Za-z_][A-Za-z_0-9]*\>\(\([^:]\|$\)\&\)"
 
-syn region seqSkolem matchgroup=seqLabel start="\([A-Za-z_]\+\)(" skip=")\.\([A-Za-z_]\+\)(" end=")\(\.[A-Za-z_]\+\)\?" contains=seqExpr
+syn region seqSkolem matchgroup=seqLabel start="\([A-Za-z_][A-Za-z_0-9]*\)(" skip=")\.\([A-Za-z_][A-Za-z_0-9]*\)(" end=")\(\.[A-Za-z_][A-Za-z_0-9]*\)\?" contains=seqExpr
 
 syn region seqDoc start="\[" end="\]" contains=seqDocExpr
 syn region seqDocExpr contained matchgroup=seqOperator start="'" end=" \|\]\&" contains=seqSkolem

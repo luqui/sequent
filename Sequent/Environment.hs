@@ -16,6 +16,9 @@ import Control.Monad.Identity
 import qualified System.Console.Readline as Readline
 import qualified Sequent.Program as Program
 import qualified Text.PrettyPrint as PP
+import System.IO (openTempFile, hPutStrLn, hPutStr, hClose)
+import System.Directory (removeFile, getTemporaryDirectory)
+import System.Process (system)
 
 type PfLink = Suspension () :. Proof.Proof
 type Pf = Mu PfLink
@@ -94,7 +97,8 @@ interactive = go "" []
             Just line -> do
                 case P.parse parseProof "<input>" line of
                     Left err -> go (show err) history env
-                    Right (n,proof) -> 
+                    Right (n,proofFunc) -> do
+                        proof <- proofFunc (fst (goals env !! n))
                         case applyProof n (tactic proof) env of
                             Error err  -> go ("Proof error: " ++ err) history env
                             Ok (env',pf)
@@ -115,18 +119,21 @@ readline = do
         Nothing -> return Nothing
         Just line -> Readline.addHistory line >> return (Just line)
 
+parseProof :: Parser.Parser (Int, Clause -> IO (Proof.Proof ()))
 parseProof = (,) <$> (fromIntegral <$> P.natural lex) <*> P.choice [
-    "done"      --> pure (const Proof.Done),
-    "exact"     --> Proof.Exact <$> hyp <*> goal,
-    "witness"   --> Proof.Witness <$> var <*> expr,
-    "flatten"   --> Proof.Flatten <$> hyp <*> list expr <*> list label <*> list label <*> pure (),
-    "intro"     --> Proof.Intro <$> goal <*> list var <*> list label <*> pure (),
-    "doc"       --> Proof.Document <$> goal <*> list hyp <*> doc,
-    "code"      --> Proof.Implement <$> list var <*> list goal <*> pure ""
+    "done"      --> pure Proof.Done,
+    "exact"     --> Proof.Exact <$> hyp <*> goal <*> pure (),
+    "witness"   --> Proof.Witness <$> var <*> expr <*> pure (),
+    "flatten"   --> Proof.Flatten <$> hyp <*> list expr <*> list label <*> list label <*> pure () <*> pure (),
+    "intro"     --> Proof.Intro <$> goal <*> list var <*> list label <*> pure () <*> pure (),
+    "doc"       --> Proof.Document <$> goal <*> list hyp <*> doc <*> pure (),
+    "code"      -->: implement <$> list var <*> list goal
     ]
     where
     infix 0 --> 
-    n --> p = P.reserved lex n *> (p <*> pure ())
+    n --> p = (const.return) <$> (P.reserved lex n *> p)
+    infix 0 -->:
+    n -->: p = P.reserved lex n *> p
     lex = Parser.lex
     label = P.identifier lex
     var = P.identifier lex
@@ -135,6 +142,28 @@ parseProof = (,) <$> (fromIntegral <$> P.natural lex) <*> P.choice [
     expr = Parser.expr
     list p = P.parens lex $ p `P.sepBy` (P.symbol lex ",")
     doc = Parser.doc
+
+    implement vars goals (hyp :- Group gvars gcons) = do
+        let gls = [ gl | Proof.Goal gl <- goals ]
+        impl <- editor $ hyp :- Group vars (filter ((`elem` gls) . fst) gcons)
+        return $ Proof.Implement vars goals impl ()
+        
+        
+editor :: Clause -> IO String
+editor clause = do
+    dir <- getTemporaryDirectory
+    (filename, handle) <- openTempFile dir "impl.seqjs"
+    hPutStrLn handle "////"
+    hPutStrLn handle . PP.render $ showClauseVV clause 
+    hPutStrLn handle "////"
+    hClose handle
+    system $ "$EDITOR +$ " ++ filename
+    impl <- readFile filename
+    return . unlines . dropToSlashes . dropToSlashes . lines $ impl
+    where
+    dropToSlashes = drop 1 . dropWhile (/= "////")
+    
+    
 
 indent :: String -> String -> String
 indent by = unlines . map (by ++) . lines
