@@ -82,3 +82,26 @@ instance Applicative Identity where
     pure = return
     (<*>) = ap
 -}
+
+newtype SuspM f a = SuspM { getSuspM :: Mu (Suspension a :. f) }
+
+instance (Functor f) => Functor (SuspM f) where
+    -- cata :: (Suspension a (f SuspM) -> r) -> SuspM f a -> r
+    fmap f = SuspM . cata alg . getSuspM
+        where
+        alg (O (Suspend x)) = Roll (O (Suspend (f x)))
+        alg (O (Normal r)) = Roll (O (Normal r))
+
+instance (Functor f) => Monad (SuspM f) where
+    return = SuspM . Roll . O . Suspend
+    t >>= f = joinSuspM (fmap f t)
+
+instance (Functor f) => Applicative (SuspM f) where
+    pure = return
+    (<*>) = ap
+
+joinSuspM :: (Functor f) => SuspM f (SuspM f a) -> SuspM f a
+joinSuspM  = SuspM . cata alg . getSuspM
+    where
+    alg (O (Suspend x)) = getSuspM x
+    alg (O (Normal r)) = Roll (O (Normal r))
