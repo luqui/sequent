@@ -120,7 +120,8 @@ parseProof = (,) <$> (fromIntegral <$> P.natural lex) <*> P.choice [
     "exact"    --> Proof.Exact <$> hyp <*> goal,
     "witness"  --> Proof.Witness <$> var <*> expr,
     "flatten"  --> Proof.Flatten <$> hyp <*> list expr <*> list label <*> list label <*> pure (),
-    "intro"    --> Proof.Intro <$> goal <*> list var <*> list label <*> pure ()
+    "intro"    --> Proof.Intro <$> goal <*> list var <*> list label <*> pure (),
+    "doc"      --> Proof.Document <$> goal <*> list hyp <*> doc
     ]
     where
     infix 0 --> 
@@ -132,6 +133,7 @@ parseProof = (,) <$> (fromIntegral <$> P.natural lex) <*> P.choice [
     goal = Proof.Goal <$> label
     expr = Parser.expr
     list p = P.parens lex $ p `P.sepBy` (P.symbol lex ",")
+    doc = Parser.doc
 
 indent :: String -> String -> String
 indent by = unlines . map (by ++) . lines

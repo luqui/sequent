@@ -1,7 +1,4 @@
-* Decide on syntax for nested clauses
-* Decide on/refine syntax for relations
 * Fix incorrectness in proof engine (eg. free variable capture and the like)
-* Discharge by documentation
 * Implement signatures in object language.
 * Define tactic language
 * Switch UI to javascript

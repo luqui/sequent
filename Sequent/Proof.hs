@@ -14,7 +14,7 @@ where
 
 import Control.Applicative
 import Control.Monad (guard)
-import Data.Maybe (isNothing)
+import Data.Maybe (isJust, isNothing)
 import Control.Arrow (second)
 import Sequent.Syntax
 import Data.Traversable (Traversable(sequenceA))
@@ -44,6 +44,9 @@ data Proof h
     -- introduce the hypotheses of a clause in the conclusion
     -- into the premises
     | Intro Goal [Name] [Label] h h
+
+    -- document away a propositional oblighation
+    | Document Goal [Hyp] Doc h
     deriving Show
 
 instance Functor Proof where
@@ -52,6 +55,7 @@ instance Functor Proof where
     fmap f (Witness n e p)            = Witness n e (f p)
     fmap f (Flatten h es ls ls' p p') = Flatten h es ls ls' (f p) (f p')
     fmap f (Intro g n ls p p')        = Intro g n ls (f p) (f p')
+    fmap f (Document g hs doc p)      = Document g hs doc (f p)
 
 instance Foldable Proof where
     foldMap f Done = mempty
@@ -59,6 +63,7 @@ instance Foldable Proof where
     foldMap f (Witness _ _ x) = f x
     foldMap f (Flatten _ _ _ _ x x') = f x `mappend` f x'
     foldMap f (Intro g n ls x x') = f x `mappend` f x'
+    foldMap f (Document g hs doc x) = f x
 
 instance Traversable Proof where
     sequenceA Done = pure Done
@@ -66,6 +71,7 @@ instance Traversable Proof where
     sequenceA (Witness n e x) = Witness n e <$> x
     sequenceA (Flatten h es l l' x x') = Flatten h es l l' <$> x <*> x'
     sequenceA (Intro g n ls x x') = Intro g n ls <$> x <*> x'
+    sequenceA (Document g hs doc x) = Document g hs doc <$> x
 
 type Constructor a = a -> Proof a
 
@@ -81,6 +87,7 @@ withConstr = go
     go (Intro g n ls p p') = 
         Intro g n ls (\hole -> Intro g n ls hole p', p)
                      (\hole -> Intro g n ls p hole, p')
+    go (Document g hs doc p) = Document g hs doc (Document g hs doc, p)
 
 type Checker f = Clause -> Error (f Program.Program)
 
@@ -167,7 +174,10 @@ proofCheck1 (Intro (Goal gl) hvars hlabels ps ps') (hyp :- con) = do
 
     (liftA2.liftA2) consprog (ps (groupUnion hyp ghyp' :- gcon')) 
                              (ps' (hyp :- con'))
-    
+proofCheck1 (Document (Goal gl) hs doc ps) (hyp :- con) = do
+    (g, con') <- groupExtractH con gl <// "No such goal"
+    and [ isJust (groupFindH hyp hl) | Hyp hl <- hs ] // "No such hypothesis"
+    ps (hyp :- con')
     
 
 skolemize :: Label -> [Expr] -> [Name] -> [Expr]

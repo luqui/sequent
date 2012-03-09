@@ -29,17 +29,7 @@ clauseElem = idful <|> ((Right . (Nothing,)) <$>  clauseAtom)
 clauseAtom :: Parser ClauseAtom
 clauseAtom = P.choice [ rel, cls ] 
     where
-    rel = convert <$> P.brackets lex (P.many relAtom)
-        where
-        relAtom = P.choice [
-                Left <$> P.identifier lex,
-                Right <$> (P.symbol lex "'" *> expr)
-            ]
-        convert xs = ARel (map toName xs) (concatMap toArg xs)
-        toName (Left i) = Just i
-        toName (Right j) = Nothing
-        toArg (Left i) = []
-        toArg (Right j) = [j]
+    rel = ADoc <$> P.brackets lex doc
     cls = AClause <$> P.parens lex clause
 
 group :: Parser Group
@@ -56,6 +46,13 @@ clause = (:-) <$> group <* P.symbol lex "->" <*> group
 
 expr :: Parser Expr
 expr = atomExpr
+
+doc :: Parser Doc
+doc = Doc <$> P.many docPart
+    where
+    docPart = Left <$> word <|> Right <$> qexpr
+    word = P.lexeme lex (P.many1 (P.noneOf "[] \t\n'"))
+    qexpr = P.char '\'' *> expr
 
 atomExpr :: Parser Expr
 atomExpr = convert <$> P.identifier lex <*> P.many skolemGroup

@@ -4,6 +4,7 @@ import Data.Maybe (isNothing)
 import Control.Applicative
 import Control.Monad (guard)
 import Data.List (intercalate)
+import Control.Arrow
 import qualified Data.Set as Set
 import qualified Text.PrettyPrint as PP
 
@@ -11,11 +12,15 @@ type Name = String
 type Label = String
 
 data ClauseAtom
-    = ARel RelName [Expr]
+    = ADoc Doc
     | AClause Clause
     deriving Eq
 
-type RelName = [Maybe String]
+newtype Doc = Doc [Either String Expr]
+    deriving (Eq)
+
+instance Show Doc where
+    show = render1 . showDoc
 
 data Group = Group {
         groupVars :: [Name],
@@ -40,17 +45,14 @@ instance Show Expr where
 
 render1 = PP.renderStyle (PP.style { PP.mode=PP.OneLineMode }) 
 
-showAtom :: ClauseAtom -> PP.Doc
-showAtom (ARel n xs) = showRel n (map showExpr xs)
+showDoc :: Doc -> PP.Doc
+showDoc (Doc xs) = PP.hsep (map showX xs)
     where
-    showRel :: RelName -> [PP.Doc] -> PP.Doc
-    showRel name args = PP.brackets (PP.hsep (atoms name args))
+    showX (Left s) = PP.text s
+    showX (Right e) = PP.text "'" PP.<> showExpr e
 
-    atoms (Just s:ss) as = PP.text s : atoms ss as
-    atoms (Nothing:ss) (a:as) = (PP.text "'" PP.<> a) : atoms ss as
-    atoms (Nothing:ss) [] = error "Too few arguments to relation"
-    atoms [] (a:as) = error "Too many arguments to relation"
-    atoms [] [] = []
+showAtom :: ClauseAtom -> PP.Doc
+showAtom (ADoc doc) = PP.brackets (showDoc doc)
 showAtom (AClause c) = PP.parens (showClause c)
 
 showExpr :: Expr -> PP.Doc
@@ -122,12 +124,13 @@ groupRevar names (Group vs hs) =
 labelFree :: Group -> Label -> Bool
 labelFree g l = isNothing (groupFindH g l)
 
+substDoc :: Name -> Expr -> Doc -> Doc
+substDoc n e (Doc xs) = Doc $ (map.right) (substExpr n e) xs
+
 subst :: Name -> Expr -> ClauseAtom -> ClauseAtom
 subst n e = go
     where
-    go (ARel n' es)
-        -- substitute n'?  Higher order...
-        = ARel n' (map (substExpr n e) es)
+    go (ADoc doc) = ADoc (substDoc n e doc)
     go (AClause (hyp :- con)) =
         AClause (groupSubst n e hyp  :- groupSubst n e con)
         -- XXX if n is bound in hyp, our substitutions are overzealous
