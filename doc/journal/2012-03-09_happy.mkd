@@ -1,0 +1,18 @@
+I just wrote the ability to implement a signature in javascript (calling vim,
+with syntax coloring for signatures and all!).  I still HATE using the command
+line interface, to the extent that I'm not really willing to do anything at all
+with it.  I need a tactic system post haste!  But I get a warm and fuzzy feeling
+about the project as it starts to come together. I can now see it intimately
+connected with the development process -- you don't write whole projects in
+Sequent, you just use it as *organization*.  That tickles my spine, that may be
+the niche, the artform, the killer in this idea, because it is a completely
+unique code organization system.
+
+Fuck files!  Amirite?  Don't worry about modules.  Search for what you neeed by
+signature.  Your code is indexed, but so is the world's -- maybe somebody's
+already done it.  Best case, you just drop it in.  Otherwise you might have to
+adapt your assumptions to theirs -- but the system guides you through the
+process.  That is when you want to use the interactive mode.
+
+Anyway, in case you couldn't tell, I'm super excited!  This idea -- whatever it
+becomes -- is going to work.  It's going to be great.
