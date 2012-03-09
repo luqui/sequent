@@ -6,6 +6,7 @@ import qualified Numeric
 
 type Hyp = String
 type Goal = String
+type SourceCode = String
 
 data Program
     = Lambda [(Hyp,Hyp)] Program
@@ -16,6 +17,7 @@ data Program
             Program [(Goal, Hyp)]  -- map results of p1 to hyps of p2
             Program [(Hyp, Hyp)]   -- variables for p2
                     [(Goal, Hyp)]  -- map goals of p2 into our new hyps
+    | SourceCode [Goal] SourceCode Program
 
 indent :: String -> String -> String
 indent by = unlines . map (by ++) . lines
@@ -57,3 +59,7 @@ toJS (Apply f helper helpermap p vars goalmap) =
                   toJS (Lambda [] helper) ++ "()))"
     adapter xs = "{ " ++ intercalate ", " [ quoteJS k ++ ": '" ++ quoteJS v ++ "'" | (k,v) <- xs ] ++ " }"
     object xs = "{ " ++ intercalate ", " [ quoteJS k ++ ": " ++ quoteJS v | (k,v) <- xs ] ++ " }"
+toJS (SourceCode gs src p) =
+    "(funcion() {\n" ++ indent "  " src ++ varmap ++ "})();\n"
+    where
+    varmap = unlines [ "_goals." ++ quoteJS g ++ " = " ++ quoteJS g ++ ";" | g <- gs ]

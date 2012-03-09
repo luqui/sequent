@@ -116,12 +116,13 @@ readline = do
         Just line -> Readline.addHistory line >> return (Just line)
 
 parseProof = (,) <$> (fromIntegral <$> P.natural lex) <*> P.choice [
-    "done"     --> pure (const Proof.Done),
-    "exact"    --> Proof.Exact <$> hyp <*> goal,
-    "witness"  --> Proof.Witness <$> var <*> expr,
-    "flatten"  --> Proof.Flatten <$> hyp <*> list expr <*> list label <*> list label <*> pure (),
-    "intro"    --> Proof.Intro <$> goal <*> list var <*> list label <*> pure (),
-    "doc"      --> Proof.Document <$> goal <*> list hyp <*> doc
+    "done"      --> pure (const Proof.Done),
+    "exact"     --> Proof.Exact <$> hyp <*> goal,
+    "witness"   --> Proof.Witness <$> var <*> expr,
+    "flatten"   --> Proof.Flatten <$> hyp <*> list expr <*> list label <*> list label <*> pure (),
+    "intro"     --> Proof.Intro <$> goal <*> list var <*> list label <*> pure (),
+    "doc"       --> Proof.Document <$> goal <*> list hyp <*> doc,
+    "code"      --> Proof.Implement <$> list var <*> list goal <*> pure ""
     ]
     where
     infix 0 --> 
