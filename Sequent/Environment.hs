@@ -157,7 +157,7 @@ editor clause = do
     hPutStrLn handle . PP.render $ showClauseVV clause 
     hPutStrLn handle "////"
     hClose handle
-    system $ "$EDITOR +$ " ++ filename
+    system $ "vim +$ " ++ filename
     impl <- readFile filename
     return . unlines . dropToSlashes . dropToSlashes . lines $ impl
     where
