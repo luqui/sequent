@@ -1,6 +1,22 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Sequent.Syntax where
+module Sequent.Syntax
+    ( Name, getName
+    , Type(..)
+    , Prop(..)
+    , Doc(..)
+    , Expr(..)
+    , Ref(..)
+    , Clause(..)
+    , Binder(..)
+
+    , Bump(..)
+    , Subst(..)
+    , Pretty(..)
+    , Parse(..)
+    , NamePass(..)
+    ) 
+where
 
 import Prelude hiding (lex, mapM, sequence)
 import Data.Maybe (isNothing)
@@ -54,7 +70,7 @@ instance Bump Expr where
     bump n (EVar r) = EVar (bump n r)
 
 instance Bump Ref where
-    bump n (RBound z v) = (RBound $! z+n) v
+    bump n (RBound z v) = RBound (z+n) v
 
 
 
@@ -76,10 +92,12 @@ instance Subst Doc where
     subst n g (Doc xs)  = Doc $ (map.right) (subst n g) xs
 
 instance Subst Expr where
-    subst n g (EVar (RBound n' v))
-        | n == n',
-          Just e <- Map.lookup v g
-        = e
+    subst n g (EVar (RBound n' v)) =
+        case compare n n' of
+            LT -> RBound (n'-1) v
+            EQ | Just e <- Map.lookup v g -> e
+               | otherwise = error "Unresolved reference in pad!"
+            GT -> RBound n' v
 
 instance Subst Clause where
     subst n g (Clause bs) = Clause (subst n g bs)

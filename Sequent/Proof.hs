@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes, TupleSections #-}
+{-# LANGUAGE RankNTypes, TupleSections, TemplateHaskell #-}
 
 module Sequent.Proof 
     ( Proof(..)
@@ -23,9 +23,13 @@ import Data.Monoid (Monoid(..))
 import Sequent.Fixpoint
 import qualified Sequent.Program as Program
 import Data.List (intercalate)
+import Data.Derive (derive)
+import Data.Derive.Functor
+import Data.Derive.Foldable
+import Data.Derive.Traversable
 
-newtype Hyp  = Hyp Label  deriving Show
-newtype Goal = Goal Label deriving Show
+newtype Hyp  = Hyp Label  deriving (Eq,Ord)
+newtype Goal = Goal Label deriving (Eq,Ord)
 
 data Proof h
     = Done
@@ -35,68 +39,39 @@ data Proof h
     | Exact Hyp Goal h
 
     -- witness an existential goal
-    | Witness Name Expr h
+    | Witness Goal Expr h
 
-    -- skolemize and introduce conclusions of a hypothesis into the 
-    -- current goal
-    | Flatten Hyp [Expr] [Label] [Label] h h
+    -- Instantiate an assumption
+    | Flatten Hyp [Expr] [Label] h [Label] h
 
-    -- introduce the hypotheses of a clause in the conclusion
-    -- into the premises
-    | Intro Goal [Name] [Label] h h
+    -- introduce the hypotheses of a goal into the premises
+    | Intro Goal [Label] h h
 
     -- document away a propositional oblighation
     | Document Goal [Hyp] Doc h
 
     -- implement in object language
-    | Implement [Name] [Goal] Program.SourceCode h
+    | Implement [Goal] Program.SourceCode h
     deriving Show
 
-instance Functor Proof where
-    fmap f Done                       = Done
-    fmap f (Exact h g p)              = Exact h g (f p)
-    fmap f (Witness n e p)            = Witness n e (f p)
-    fmap f (Flatten h es ls ls' p p') = Flatten h es ls ls' (f p) (f p')
-    fmap f (Intro g n ls p p')        = Intro g n ls (f p) (f p')
-    fmap f (Document g hs doc p)      = Document g hs doc (f p)
-    fmap f (Implement ns gs src p)       = Implement ns gs src (f p)
+$(derive makeFunctor ''Proof)
+$(derive makeFoldable ''Proof)
+$(derive makeTraversable ''Proof)
 
-instance Foldable Proof where
-    foldMap f Done = mempty
-    foldMap f (Exact _ _ x) = f x
-    foldMap f (Witness _ _ x) = f x
-    foldMap f (Flatten _ _ _ _ x x') = f x `mappend` f x'
-    foldMap f (Intro g n ls x x') = f x `mappend` f x'
-    foldMap f (Document g hs doc x) = f x
-    foldMap f (Implement ns gs src x) = f x
-
-instance Traversable Proof where
-    sequenceA Done = pure Done
-    sequenceA (Exact h g x) = Exact h g <$> x
-    sequenceA (Witness n e x) = Witness n e <$> x
-    sequenceA (Flatten h es l l' x x') = Flatten h es l l' <$> x <*> x'
-    sequenceA (Intro g n ls x x') = Intro g n ls <$> x <*> x'
-    sequenceA (Document g hs doc x) = Document g hs doc <$> x
-    sequenceA (Implement ns gs src x) = Implement ns gs src <$> x
-
-type Constructor a = a -> Proof a
-
-withConstr :: Proof a -> Proof (Constructor a, a)
+withConstr :: Proof a -> Proof (a -> Proof a, a)
 withConstr = go
     where
     go Done = Done
     go (Exact h g p) = Exact h g (Exact h g, p)
     go (Witness n e p) = Witness n e (Witness n e, p)
-    go (Flatten h es ls l' p p') = 
-        Flatten h es ls l' (\hole -> Flatten h es ls l' hole p', p)    
-                           (\hole -> Flatten h es ls l' p hole, p')
-    go (Intro g n ls p p') = 
-        Intro g n ls (\hole -> Intro g n ls hole p', p)
-                     (\hole -> Intro g n ls p hole, p')
+    go (Flatten h es ls p ls' p') = 
+        Flatten h es ls  (\hole -> Flatten h es ls hole ls' p', p)    
+                     ls' (\hole -> Flatten h es ls p ls' hole, p')
+    go (Intro g ls p p') = 
+        Intro g ls (\hole -> Intro g ls hole p', p)
+                   (\hole -> Intro g ls p hole, p')
     go (Document g hs doc p) = Document g hs doc (Document g hs doc, p)
-    go (Implement ns gs src p) = Implement ns gs src (Implement ns gs src, p)
-
-type Checker f = Clause -> Error (f Program.Program)
+    go (Implement gs src p) = Implement gs src (Implement gs src, p)
 
 infix 0 //
 (//) :: Bool -> String -> Error ()
@@ -113,10 +88,37 @@ initProgram (Group vars hyps :- _) = Program.Lambda (zip hyps' hyps')
     where
     hyps' = vars ++ map fst hyps
 
-convP :: Expr -> String
-convP (VarExpr n) = n
-convP (SkolemExpr n es v) = 
-    concat [n, "(", intercalate "," (map convP es), ").", convP v]
+data Context
+    = Map.Map Hyp Type :- Map.Map Goal Type
+
+proofCheck :: Context -> Proof a -> Error (Proof (Context, a))
+proofCheck _            Done = Done
+proofCheck (hyp :- con) (Exact hl gl proof') = do
+    h <- Map.lookup hl hyp <// "No such hypothesis"
+    g <- Map.lookup gl con <// "No such goal"
+    h == g                  // "Terms do not match"
+    let cx' = hyp :- Map.delete gl con
+    return $ Exact hl gl (cx', proof')
+proofCheck (hyp :- con) (Witness gl e proof') = do
+    gl `Map.member` con     // "No such variable"
+    let Goal label = gl
+    let cx' = hyp :- (subst 0 (Map.singleton label e) <$> con)
+    return $ Witness gl e (cx', proof')
+proofCheck (hyp :- con) (Flatten hl es glabels proof' llabels proof'') = do
+    Clause (Binder hhyp (Binder hcon ())) <- Map.lookup hl hyp <// "No such hypothesis" 
+    all (`Map.notMember` hyp) hlabels                           // "Label already used in hypotheses"
+
+
+clauseVars :: Clause -> [Name]
+clauseVars (Clause (Binder hs _)) = [ k | (k,v) <- Map.assocs hs, isObject v ]
+
+substClause :: [Expr] -> Clause -> (Group Type, Binder ()) -- (remaining hs, gs)
+substClause es clause@(Clause (Binder hs cs)
+    = (subst 0 sub hs, subst 0 sub cs)
+    where
+    vars = clauseVars clause
+    sub = Map.fromList (zip vars es)
+    
 
 proofCheck1 :: (Applicative f) => Proof (Checker f) -> Checker f
 proofCheck1 Done (_ :- con) = do
