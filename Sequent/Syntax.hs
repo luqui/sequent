@@ -1,163 +1,229 @@
+{-# LANGUAGE PatternGuards #-}
+
 module Sequent.Syntax where
 
+import Prelude hiding (lex, mapM, sequence)
 import Data.Maybe (isNothing)
 import Control.Applicative
 import Control.Monad (guard)
 import Data.List (intercalate)
+import Sequent.Fixpoint (Error)
 import Control.Arrow
+import Data.Traversable (mapM, sequence)
 import qualified Data.Set as Set
+import qualified Data.Map as Map
 import qualified Text.PrettyPrint as PP
+import qualified Text.Parsec as P
+import qualified Text.Parsec.Token as P
+import qualified Text.Parsec.Language as P
 
-type Name = String
-type Label = String
 
-data ClauseAtom
-    = ADoc Doc
-    | AClause Clause
-    deriving Eq
+newtype Name = Name { getName :: String }
+    deriving (Eq,Ord)
+
+data Type
+    = TObject
+    | TProp Prop
+
+data Prop
+    = PDoc Doc
+    | PClause Clause
 
 newtype Doc = Doc [Either String Expr]
     deriving (Eq)
 
-instance Show Doc where
-    show = render1 . showDoc
-
-data Group = Group {
-        groupVars :: [Name],
-        groupHyps :: [(Label, ClauseAtom)]
-    }
-    deriving Eq
-
-data Clause
-    = Group :- Group
-    deriving Eq
-
-instance Show Clause where
-    show = render1 . showClause
-
 data Expr
-    = VarExpr Name
-    | SkolemExpr Label [Expr] Expr
-    deriving Eq
+    = EVar Ref
+    deriving (Eq)
 
-instance Show Expr where
-    show = render1 . showExpr
+data Ref = RBound Int Name -- de bruijn style
+    deriving (Eq)
+
+newtype Clause = Clause (Binder (Binder ()))
+
+type Group a = Map.Map Name a
+
+data Binder a = Binder (Group Type) a
+
+
+
+class Bump a where
+    bump :: Int -> a -> a
+
+instance Bump Expr where
+    bump n (EVar r) = EVar (bump n r)
+
+instance Bump Ref where
+    bump n (RBound z v) = (RBound $! z+n) v
+
+
+
+class Subst a where
+    subst :: Int -> Group Expr -> a -> a
+
+instance Subst () where
+    subst _ _ () = ()
+
+instance Subst Type where
+    subst _ _ TObject   = TObject
+    subst n g (TProp p) = TProp (subst n g p)
+
+instance Subst Prop where
+    subst n g (PDoc d)    = PDoc (subst n g d)
+    subst n g (PClause c) = PClause (subst n g c)
+
+instance Subst Doc where
+    subst n g (Doc xs)  = Doc $ (map.right) (subst n g) xs
+
+instance Subst Expr where
+    subst n g (EVar (RBound n' v))
+        | n == n',
+          Just e <- Map.lookup v g
+        = e
+
+instance Subst Clause where
+    subst n g (Clause bs) = Clause (subst n g bs)
+
+instance (Subst a) => Subst (Binder a) where
+    subst n g (Binder bs exp) = 
+        Binder (subst (n+1) g' <$> bs) (subst (n+1) g' exp)
+        where
+        g' = bump 1 <$> g
 
 render1 = PP.renderStyle (PP.style { PP.mode=PP.OneLineMode }) 
 
-showDoc :: Doc -> PP.Doc
-showDoc (Doc xs) = PP.hsep (map showX xs)
-    where
-    showX (Left s) = PP.text s
-    showX (Right e) = PP.text "'" PP.<> showExpr e
 
-showAtom :: ClauseAtom -> PP.Doc
-showAtom (ADoc doc) = PP.brackets (showDoc doc)
-showAtom (AClause c) = PP.parens (showClause c)
 
-showExpr :: Expr -> PP.Doc
-showExpr (VarExpr n) = PP.text n
-showExpr sk@(SkolemExpr l es v) = PP.text l PP.<> showSkolem l sk
-    where
-    showSkolem cx (VarExpr n)
-        | n == cx = PP.empty
-        | otherwise = PP.text "." PP.<> PP.text n
-    showSkolem cx (SkolemExpr l es v)
-        | l == cx = args PP.<> showSkolem cx v
-        | otherwise = PP.hcat [PP.text ".", PP.text l, args, showSkolem l v]
+class Pretty a where
+    pretty :: a -> PP.Doc
+
+instance Pretty Name where
+    pretty (Name s) = PP.text s
+
+instance Pretty Type where
+    pretty TObject = PP.text "*"
+    pretty (TProp p) = pretty p
+
+instance Pretty Prop where
+    pretty (PDoc d) = PP.brackets (pretty d)
+
+instance Pretty Doc where
+    pretty (Doc xs) = PP.hsep (map showX xs)
         where
-        args = PP.parens . PP.hcat . PP.punctuate (PP.text ",") . map showExpr $ es
+        showX (Left s) = PP.text s
+        showX (Right e) = PP.text "'" PP.<> pretty e
 
-showClause :: Clause -> PP.Doc
-showClause (hyps :- cons) = PP.sep [showg hyps, PP.text "->", showg cons]
+instance Pretty Expr where
+    pretty (EVar v) = pretty v
+
+instance Pretty Ref where
+    pretty (RBound n v) = pretty v
+        -- TODO two identically-named vars at different levels?
+
+instance Pretty Clause where
+    pretty (Clause (Binder hyp (Binder con ()))) = 
+        PP.sep [ showTypeGroup hyp, PP.text "->", showTypeGroup con ]
+
+showTypeGroup :: Group Type -> PP.Doc
+showTypeGroup m = PP.sep (pvars : (line <$> Map.assocs hyps))
     where
-    showg (Group vs hs) = PP.sep (PP.fsep (map PP.text vs) : map (showAtom.snd) hs)
+    (vars, hyps) = Map.partition isObject m
+    line (v,h) = pretty v PP.<> PP.text ":" PP.<+> pretty h
+    pvars = PP.fsep (pretty <$> Map.elems vars)
 
-showClauseVOpen :: (Clause -> PP.Doc) -> Clause -> PP.Doc
-showClauseVOpen rec (hyps :- cons) = PP.vcat [showg hyps, PP.text "->", showg cons]
+isObject :: Type -> Bool
+isObject TObject = True
+isObject _ = False
+
+showGroup :: (a -> PP.Doc) -> Group a -> PP.Doc
+showGroup f = PP.sep . map line . Map.assocs
     where
-    showg (Group vs hs) = PP.vcat (PP.fsep (map PP.text vs) : map labAtom hs)
-    labAtom (l,a) = PP.text l PP.<> PP.text ":" PP.<+> showAtomV a
-
-    showAtomV (AClause c) = PP.parens (rec c)
-    showAtomV x = showAtom x
-
-showClauseV = showClauseVOpen showClause
-showClauseVV = showClauseVOpen showClauseVV
-
-groupNull :: Group -> Bool
-groupNull (Group [] []) = True
-groupNull _ = False
-
-groupUnVar :: Name -> Group -> Maybe Group
-groupUnVar v (Group vs hs) = do
-    (v', vs') <- dismember' vs v
-    return $ Group vs' hs
-
-groupExtractH :: Group -> Label -> Maybe (ClauseAtom, Group)
-groupExtractH (Group vs hs) l = do
-    (h, hs') <- dismember hs l
-    return (h, Group vs hs')
-
-groupFindH :: Group -> Label -> Maybe ClauseAtom
-groupFindH g l = fst <$> groupExtractH g l
-
-groupAddH :: Label -> ClauseAtom -> Group -> Group
-groupAddH l h (Group vs hs) = Group vs (hs ++ [(l,h)])
-
-groupUnion :: Group -> Group -> Group
-groupUnion (Group vs hs) (Group vs' hs') = Group (vs ++ vs') (hs ++ hs') -- XXX alpha convert!
-
-groupAddV :: Name -> Group -> Group
-groupAddV n (Group vs hs) = Group (vs ++ [n]) hs
-
-groupSubst :: Name -> Expr -> Group -> Group
-groupSubst n e (Group vs hs)
-    | n `elem` vs = Group vs hs
-    | otherwise   = Group vs ((fmap.fmap) (subst n e) hs)
-
-groupRelabel :: [Label] -> Group -> Maybe Group
-groupRelabel labels (Group vs hs) = do
-    guard $ length hs <= length labels 
-    return $ Group vs (zip labels (map snd hs))
-
-groupRevar :: [Name] -> Group -> Maybe Group
-groupRevar names (Group vs hs) = 
-    -- XXX bug!  Consider what happens if you rename [x,y] to [y,x]
-    Just . Group names $ (map.fmap) (foldr (.) id [ subst v (VarExpr n) | (v,n) <- zip vs names ]) hs
+    line (v,h) = pretty v PP.<> PP.text ":" PP.<+> f h
 
 
-labelFree :: Group -> Label -> Bool
-labelFree g l = isNothing (groupFindH g l)
 
-substDoc :: Name -> Expr -> Doc -> Doc
-substDoc n e (Doc xs) = Doc $ (map.right) (substExpr n e) xs
+type Parser = P.Parsec String ()
 
-subst :: Name -> Expr -> ClauseAtom -> ClauseAtom
-subst n e = go
+lex = P.makeTokenParser P.haskellDef 
+    { P.reservedNames = [] }
+
+class Parse a where
+    parse :: Parser a
+
+instance Parse Name where
+    parse = Name <$> P.identifier lex
+
+instance Parse Type where
+    parse = P.choice [
+        TObject <$ P.symbol lex "*",
+        TProp <$> parse ]
+
+instance Parse Prop where
+    parse = P.choice [ 
+        PDoc <$> P.brackets lex parse,
+        PClause <$> P.parens lex parse ]
+
+instance Parse Doc where
+    parse = Doc <$> P.many docPart
+        where
+        docPart = Left <$> word <|> Right <$> qexpr
+        word = P.lexeme lex (P.many1 (P.noneOf "[] \t\n'"))
+        qexpr = P.char '\'' *> parse
+
+instance Parse Expr where
+    parse = EVar <$> parse
+
+instance Parse Ref where
+    -- a bit evil during parsing; we will
+    -- do another pass to set the references
+    -- properly
+    parse = RBound (-1) <$> parse
+
+instance Parse Clause where
+    parse = conv <$> parseTypeGroup <* P.symbol lex "->" <*> parseTypeGroup
+        where
+        conv g1 g2 = Clause . Binder g1 . Binder g2 $ ()
+
+parseTypeGroup :: Parser (Group Type)
+parseTypeGroup = Map.fromList <$> P.many idful
     where
-    go (ADoc doc) = ADoc (substDoc n e doc)
-    go (AClause (hyp :- con)) =
-        AClause (groupSubst n e hyp  :- groupSubst n e con)
-        -- XXX if n is bound in hyp, our substitutions are overzealous
+    idful = convert <$> parse <*> P.optionMaybe (P.symbol lex ":" *> parse)
+    convert n Nothing = (n, TObject)
+    convert n (Just a) = (n, a)
 
-substExpr :: Name -> Expr -> Expr -> Expr
-substExpr n e (VarExpr n')
-    | n == n' = e
-    | otherwise = VarExpr n'
-substExpr n e (SkolemExpr l es v) 
-    = substSkolem (SkolemExpr l es v)
-    where
-    substSkolem (VarExpr n) = VarExpr n
-    substSkolem (SkolemExpr l es v) = SkolemExpr l (map (substExpr n e) es) (substSkolem v)
 
-dismember :: (Eq a) => [(a,b)] -> a -> Maybe (b,[(a,b)])
-dismember [] x' = Nothing
-dismember ((x,y):xs) x'
-    | x == x' = Just (y,xs)
-    | otherwise = (fmap.fmap) ((x,y):) (dismember xs x')
 
-dismember' :: (Eq a) => [a] -> a -> Maybe (a,[a])
-dismember' xs x = (fmap.fmap.fmap) fst . flip dismember x . map dup $ xs 
-    where
-    dup x = (x,x)
+class NamePass a where
+    namePass :: Map.Map Name Int -> a -> Error a
+
+instance NamePass () where
+    namePass _ = return
+
+instance NamePass Type where
+    namePass env TObject = return $ TObject
+    namePass env (TProp p) = TProp <$> namePass env p
+
+instance NamePass Prop where
+    namePass env (PDoc d) = PDoc <$> namePass env d
+    namePass env (PClause c) = PClause <$> namePass env c
+
+instance NamePass Doc where
+    namePass env (Doc xs) = Doc <$> (mapM.mapM) (namePass env) xs
+
+instance NamePass Expr where
+    namePass env (EVar v) = EVar <$> namePass env v
+
+instance NamePass Ref where
+    namePass env (RBound (-1) v)
+        | Just z <- Map.lookup v env = return $ RBound z v
+        | otherwise = fail $ "Not in scope: " ++ getName v
+    namePass env (RBound n v) = return $ RBound n v
+
+instance NamePass Clause where
+    namePass env (Clause bs) = Clause <$> namePass env bs
+
+instance (NamePass a) => NamePass (Binder a) where
+    namePass env (Binder g body) = Binder <$> mapM (namePass env') g <*> namePass env' body
+        where
+        env' = (const 0 <$> g) `Map.union` (succ <$> env)
+        

@@ -7,7 +7,9 @@ import Control.Monad (liftM, ap, MonadPlus(..))
 import Control.Applicative
 import Control.Arrow
 import Control.Monad.Identity (Identity)
-import Data.Traversable
+import Data.Foldable (Foldable(..))
+import Data.Traversable (Traversable(..))
+import Data.Monoid (Monoid(..))
 
 newtype (f :. g) x = O { unO :: f (g x) }
     deriving Show
@@ -105,3 +107,11 @@ joinSuspM  = SuspM . cata alg . getSuspM
     where
     alg (O (Suspend x)) = getSuspM x
     alg (O (Normal r)) = Roll (O (Normal r))
+
+instance Foldable (Either a) where
+    foldMap f (Left a) = mempty
+    foldMap f (Right x) = f x
+
+instance Traversable (Either a) where
+    sequenceA (Left x) = pure (Left x)
+    sequenceA (Right y) = Right <$> y
