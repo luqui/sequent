@@ -1,4 +1,5 @@
-{-# LANGUAGE RankNTypes, TupleSections, TemplateHaskell #-}
+{-# LANGUAGE RankNTypes, TupleSections, TemplateHaskell
+  , DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 
 module Sequent.Proof 
     ( Proof(..)
@@ -23,13 +24,13 @@ import Data.Monoid (Monoid(..))
 import Sequent.Fixpoint
 import qualified Sequent.Program as Program
 import Data.List (intercalate)
-import Data.Derive (derive)
+import Data.DeriveTH (derive)
 import Data.Derive.Functor
 import Data.Derive.Foldable
 import Data.Derive.Traversable
 
-newtype Hyp  = Hyp Label  deriving (Eq,Ord)
-newtype Goal = Goal Label deriving (Eq,Ord)
+newtype Hyp  = Hyp  Name deriving (Eq,Ord)
+newtype Goal = Goal Name deriving (Eq,Ord)
 
 data Proof h
     = Done
@@ -42,21 +43,17 @@ data Proof h
     | Witness Goal Expr h
 
     -- Instantiate an assumption
-    | Flatten Hyp [Expr] [Label] h [Label] h
+    | Flatten Hyp [Expr] [Name] h [Name] h
 
     -- introduce the hypotheses of a goal into the premises
-    | Intro Goal [Label] h h
+    | Intro Goal [Name] h h
 
     -- document away a propositional oblighation
     | Document Goal [Hyp] Doc h
 
     -- implement in object language
     | Implement [Goal] Program.SourceCode h
-    deriving Show
-
-$(derive makeFunctor ''Proof)
-$(derive makeFoldable ''Proof)
-$(derive makeTraversable ''Proof)
+    deriving (Functor, Foldable, Traversable)
 
 withConstr :: Proof a -> Proof (a -> Proof a, a)
 withConstr = go
@@ -113,7 +110,7 @@ clauseVars :: Clause -> [Name]
 clauseVars (Clause (Binder hs _)) = [ k | (k,v) <- Map.assocs hs, isObject v ]
 
 substClause :: [Expr] -> Clause -> (Group Type, Binder ()) -- (remaining hs, gs)
-substClause es clause@(Clause (Binder hs cs)
+substClause es clause@(Clause (Binder hs cs))
     = (subst 0 sub hs, subst 0 sub cs)
     where
     vars = clauseVars clause

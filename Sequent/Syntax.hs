@@ -94,10 +94,10 @@ instance Subst Doc where
 instance Subst Expr where
     subst n g (EVar (RBound n' v)) =
         case compare n n' of
-            LT -> RBound (n'-1) v
+            LT -> EVar (RBound (n'-1) v)
             EQ | Just e <- Map.lookup v g -> e
-               | otherwise = error "Unresolved reference in pad!"
-            GT -> RBound n' v
+               | otherwise -> error "Unresolved reference in pad!"
+            GT -> EVar (RBound n' v)
 
 instance Subst Clause where
     subst n g (Clause bs) = Clause (subst n g bs)
