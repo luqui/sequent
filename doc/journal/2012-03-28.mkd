@@ -1,0 +1,82 @@
+Ok, this is irritating. I can't seem to figure out a data representation which
+works.  There is a tension with this sort of multi-ary lambda calculus.  When I
+eliminate a term like
+
+    (x y -> z [f 'z])
+
+I want to instantiate both variables at the same time, so that I can get `z`
+out.  But when I am working with a clause
+
+    --
+    w x [f 'w] [g 'x]
+
+I may want to instantiate `w` and `x` separately (perhaps even because I have a
+use for the `[f 'w]` assumption, with which I will construct `x`).  And so now
+we have multiple forms of substitution which duplicates logic that
+traverses the whole syntax tree in a way that appears to be hard to abstract.
+
+That little parenthetical in the last paragraph is actually pretty important. It
+seems like that is necessary for constructing any sort of nontrivial chaining
+logic, but the current execution semantics do not allow that.  We are supposed
+to be ... no I am a liar there is no problem.  You don't get a `[f 'w]`
+assumption by instantiating `w`, you get an obligation for a `[f 'w]`
+assumption.  Everything you have you can make from the hypotheses.
+
+So... we really can instantiate all at the same time.  I want the proof
+interface to be incremental, but perhaps incremental instantiation is the job
+of the proof environment not the calculus.
+
+    A
+    ->
+    w x [f 'w] [g' x]
+
+    cut:
+        A
+        --
+        x [f 'A] [g 'x]
+
+        ...
+
+    A
+    (A -> x [f 'A] [g 'x])
+    ->
+    w x [f 'w] [g' x]
+
+    A x
+    [f 'A] [g 'x]
+    ->
+    w x [f 'w] [g 'x]
+
+    A x
+    [f 'A]
+    [g 'x]
+    ->
+    [f 'A] [g 'x]
+
+Hmm I suppose we should have a cut in the proof calculus.
+
+But maybe I am still thinking too traditionally. It just occurred to me that we
+are working on a clause, making "moves" on it.  We can make similar moves to any
+clause occurring in the goal, and their inverses to any clause appearing in the
+hypotheses.  I.e. problems solving in Sequent is essentially a weakening
+procedure.
+
+I would like that sort of interface; more game-like.  As long as you can make
+lemmas I think it is just as powerful and cognitively better (strictly; i.e. you
+can still work the old way just by focusing your attention on one clause). But a
+clause *is* a whole environment.  That's the beauty of it.  So we are doing it
+equivalently; I think it would be cool to accentuate the recursive structure a bit.
+
+-----
+
+Okok just went for a walk and I had the idea that I can just ditch the Haskell
+and go straight for JS.  Maybe working in a different language will spark
+different neurons and a different approach.
+
+Assumptions are easy: they are just objects with associated construction
+information.  I'm not exactly sure what to do about goals, in particular the
+intro rule. It seems like we still need a context, so that we can have more than
+one of them (so you can't use an assumption from intro for something for which
+it was not assumed). But using unique IDs and shit will be okay at least, which
+will get rid of some of the name hell I think.  Whatever, maybe it's time to
+just do it.
